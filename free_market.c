@@ -1,9 +1,15 @@
+// Skibidi Toilet was here
+
+/*    Bibliotecas    */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+/*    Constantes    */
 #define DADOS_USUARIO "usuariosTeste.bin"
 #define MAX_NOME 50
+
+/*    Código    */
 
 typedef struct {
     char nome[MAX_NOME];
