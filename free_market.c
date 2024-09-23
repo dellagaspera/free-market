@@ -525,7 +525,7 @@ int main(int argc, char ** argv)
 
         break;
         }
-    }while(escolha != 0); 
+    } while(escolha != 0); 
     // O loop nunca chegará nessa parte sem ser parado.
     // Entretanto, para facilitar a leitura, a condição foi colocada.
 
