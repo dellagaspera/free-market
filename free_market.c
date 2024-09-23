@@ -12,10 +12,11 @@
 #define MAX_CHAR_NOME_PRODUTO (40 + 1)
 #define MAX_CHAR_DESCRICAO    (128 + 1)
 
-#define USUARIO_SEM_LOGIN -1
-
 #define SIM 1
 #define NAO 0
+
+// Erros
+#define USUARIO_SEM_LOGIN -1
 
 // Arquivos
 #define ARQUIVO_USUARIOS "usuarios_freemarket"
@@ -24,7 +25,6 @@
 #define SUCESSO 0
 
 #define ERRO_BUSCAR_SEM_CORRESPONDENTE -1
-
 
 /* DEPOIS A GENTE PREOCUPA COM AVALIACAO
     VAMO AOS POUCOS
@@ -41,6 +41,7 @@ typedef struct avaliacao_s {
 } avaliacao_t;
 
 */
+
 // Estrutura do produto
 typedef struct produto_s { //obs: a chave é do lado do nome! nao é! é sim!
 
