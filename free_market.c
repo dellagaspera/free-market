@@ -1,41 +1,41 @@
-    //  INCLUSOES   //
+    //  INCLUSOES  //
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-    //  CONSTANTES ARQUIVOS   //
+    //  CONSTANTES ARQUIVOS  //
 
 #define ARQUIVO_USUARIOS "fm_usuarios.bin" // Arquivo onde estão armazendados os usuários
 #define ARQUIVO_PRODUTOS "fm_produtos.bin" // Arquivo onde estão armazendados os produtos
 #define ARQUIVO_AVALIACOES "fm_avaliacoes.bin" // Arquivo onde estão armazendados as avaliações
 
-    //  CONSTANTES USUARIOS   //
+    //  CONSTANTES USUARIOS  //
 
 #define CARACTERES_EMAIL (30 + 1) // Máximo de caracteres de um e-mail
 #define CARACTERES_NOME_EXIBICAO (30 + 1) // Máximo de caracteres de um nome de exibição
 #define CARACTERES_ID (20 + 1)  // Máximo de caracteres de um identificador
 #define CARACTERES_SENHA (16 + 1)  // Máximo de caracteres de um asenha
 
-    //  CONSTANTES PRODUTOS   //
+    //  CONSTANTES PRODUTOS  //
 
 #define CARACTERES_NOME_PRODUTO (30 + 1)  // Máximo de caracteres de um nome de produto
 #define CARACTERES_DESCRICAO_PRODUTO (255 + 1)  // Máximo de caracteres de uma descrição de produto
 
-    //  CONSTANTES AVALIACOES   //
+    //  CONSTANTES AVALIACOES  //
 
 #define CARACTERES_MENSAGEM (300 + 1)  // Máximo de caracteres de uma avaliação
 
-    //  CONSTANTES RETORNO   //
+    //  CONSTANTES RETORNO  //
 
 #define SUCESSO 0
 
-    //  CONSTANTES GERAIS   //
+    //  CONSTANTES GERAIS  //
 
 #define true  (1!=0)
 #define false (1==0)
 
-    //  ESTRUTURAS   //
+    //  ESTRUTURAS  //
     
 /* 
     #### Usuário
@@ -82,11 +82,11 @@ typedef struct avaliacao_e {
     int  nota;
 } avaliacao_t;
 
-//  FUNCOES   //
+    //  FUNCOES  //
 
 
 
-//  MAIN
+    //   MAIN  //
 
 int main(int argc, char ** argv) {
 
