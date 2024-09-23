@@ -29,6 +29,7 @@
     //  CONSTANTES RETORNO  //
 
 #define SUCESSO 0
+#define INEXISTENTE -1
 
     //  CONSTANTES GERAIS  //
 
@@ -41,15 +42,15 @@
     #### Usuário
     - email : E-mail do usuário
     - senha : Senha do usuário
-    - nomeExibicao: Nome de exibição do usuário
     - id: Identificador do usuário
+    - nomeExibicao: Nome de exibição do usuário
 */
-typedef struct usuarios_e {
+typedef struct usuario_e {
     char email[CARACTERES_EMAIL];
     char senha[CARACTERES_SENHA];
-    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
     char id[CARACTERES_ID];
-} usuarios_t;
+    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
+} usuario_t;
 
 /* 
     #### Produto
@@ -58,13 +59,13 @@ typedef struct usuarios_e {
     - nome: Nome do produto
     - nota: Nota média do produto
 */
-typedef struct produtos_e {
+typedef struct produto_e {
     char idVendedor[CARACTERES_ID];
     char id[CARACTERES_ID];
     char nome[CARACTERES_NOME_PRODUTO];
     char descricao[CARACTERES_DESCRICAO_PRODUTO];
     int  nota;
-} produtos_t;
+} produto_t;
 
 /*
     #### Avaliacao
@@ -82,13 +83,70 @@ typedef struct avaliacao_e {
     int  nota;
 } avaliacao_t;
 
+typedef unsigned int bool;
+
     //  FUNCOES  //
 
+// Verifica se existe o e-mail digitado
+// > true/false
+bool emailExiste(char email[CARACTERES_EMAIL]) {
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    int nUsuarios;
+    usuario_t * usuarios;
+    fscanf(arquivoUsuarios,"%d", &nUsuarios);
+    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+
+    for(int i = 0; i < nUsuarios; i++) {
+        if(strcmp(email, usuarios[i].email)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+// Remove a quebra de linha ('\n') no final de uma string
+void removeQuebra(char string[]) {
+    int tamanho = strlen(string);
+    if(tamanho > 0) string[tamanho - 1] = '\0';
+}
+
+// Cadastra um novo usuário e o adiciona ao arquivo
+void cadastrarUsuario() {
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "ab");
+    fseek (arquivoUsuarios, 0, SEEK_SET);
+
+    char email[CARACTERES_EMAIL];
+    char senha[CARACTERES_SENHA];
+    char id[CARACTERES_ID];
+    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
+
+    do {
+        printf("E-MAIL\n : ");
+        fgets(email, CARACTERES_EMAIL, stdin);
+        removeQuebra(email);
+        if(emailExiste(email)) printf("E-MAIL JA CADASTRADO\n");
+    } while(emailExiste(email));
+
+    printf("SENHA\n : ");
+    fgets(senha, CARACTERES_SENHA, stdin);
+    usuario_t novoUsuario;
+
+    fclose(arquivoUsuarios);
+    return;
+}
 
 
-    //   MAIN  //
+    //  MAIN  //
 
 int main(int argc, char ** argv) {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        FILE * arquivoUsuario = fopen(ARQUIVO_USUARIOS, "wb");
+        int i = 0;
+        fwrite(&i, sizeof(int), 1, arquivoUsuario);
+        fclose(arquivoUsuario);
+    }
+    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) fopen(ARQUIVO_PRODUTOS, "wb");
+    if(fopen(ARQUIVO_AVALIACOES, "rb") == NULL) fopen(ARQUIVO_AVALIACOES, "wb");
 
     return SUCESSO;
 }
