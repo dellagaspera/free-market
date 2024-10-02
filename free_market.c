@@ -165,24 +165,35 @@ int validaSenha(char senha[CARACTERES_SENHA]) {
 */
 bool validaEmail(char email[CARACTERES_EMAIL]) {
     int tamanho = strlen(email);
+    int nArrobas = 0;
+
+    // Verifica cada caractere do e-mail
+    for(int i = 0; i < tamanho; i++) {
+        // Conta a quantidade de @s no e-mail
+        if(email[i] == '@') nArrobas++;
+        // Verifica se após um ponto não há outro ponto ou um espaço vazio
+        if(email[i] && (email[i + 1] == '.' || email[i + 1] == ' ')) return false;
+    }
+    // Se houver mais de um @ retona falso
+    if(nArrobas != 1) return false;
 
     for(int i = 1; i < tamanho; i++) {
         if(email[i] == '@') {
             for(int j = i + 2; j < tamanho; j++) {  
-                if(email[j] == '.' && j + 1 < tamanho) {
-                    return true;
-                }
+                // Verifica se após um ponto não há outro ponto ou um espaço vazio
+                if(email[i] == '.' && (email[i + 1] == '.' || email[i + 1] == ' ')) return false;
             }
         }
     }
 
-    return false;
+    return true;
 } 
 
 // Remove a quebra de linha ('\n') no final de uma string
 void removeQuebra(char string[]) {
     int tamanho = strlen(string);
     if(tamanho > 0) string[tamanho - 1] = '\0';
+    return;
 }
 
 // Cadastra um novo usuário e o adiciona ao arquivo
