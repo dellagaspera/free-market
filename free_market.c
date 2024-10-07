@@ -32,11 +32,13 @@
     //  CONSTANTES RETORNO  //
 
 #define SUCESSO 0
-#define INEXISTENTE -1
+#define ERRO -1
 
 #define ERRO_SENHA_CARACTERES_INSUFICIENTES  1
 #define ERRO_SENHA_SEM_NUMEROS               2
 #define ERRO_SENHA_SEM_MAIUSCULAS            3
+
+#define LOGIN_SEM_LOGIN -1
 
     //  CONSTANTES GERAIS  //
 
@@ -180,27 +182,37 @@ int validaSenha(char senha[CARACTERES_SENHA]) {
 bool validaEmail(char email[CARACTERES_EMAIL]) {
     int tamanho = strlen(email);
     int nArrobas = 0;
+    int posicaoArroba;
 
     // Verifica cada caractere do e-mail
-    for(int i = 0; i < tamanho; i++) {
+    for (int i = 0; i < tamanho; i++) {
         // Conta a quantidade de arrobas no e-mail
-        if(email[i] == '@') nArrobas++;
-        // Verifica se após um ponto não há outro ponto ou um espaço vazio
-        if(email[i] == '.' && (email[i + 1] == '.' || email[i + 1] == ' ')) return false;
+        if (email[i] == '@') {
+            nArrobas++;
+            posicaoArroba = i; // Armazena a posição da arroba
+        }
     }
-    // Se houver mais de um @ retona falso
-    if(nArrobas != 1) return false;
 
-    for(int i = 1; i < tamanho; i++) {
-        if(email[i] == '@') {
-            for(int j = i + 2; j < tamanho; j++) {  
-                // Verifica se após um ponto não há outro ponto ou um espaço vazio
-                if(email[i] == '.' && (email[i + 1] == '.' || email[i + 1] == ' ')) return false;
+    // Se houver mais de um arroba ou nenhum, retorna falso
+    if (nArrobas != 1) return false;
+
+    // Verifica os pontos após o arroba
+    int nPontosDepoisDoArroba = 0;
+    for (int j = posicaoArroba + 1; j < tamanho; j++) {
+        if (email[j] == '.') {
+            nPontosDepoisDoArroba++;
+            // Verifica se o próximo caractere é um ponto
+            if (j + 1 < tamanho && email[j + 1] == '.') {
+                return false; // Retorna falso se houver ponto seguido de ponto
             }
         }
     }
 
-    return true;
+    // Se não houver um ponto após o arroba, retorna falso
+    if (nPontosDepoisDoArroba < 1) return false;
+
+    // Se chegou até aqui, o e-mail é válido
+    return true; 
 } 
 
 // Remove a quebra de linha ('\n') no final de uma string
@@ -208,6 +220,52 @@ void removeQuebra(char string[]) {
     int tamanho = strlen(string);
     if(tamanho > 0) string[tamanho - 1] = '\0';
     return;
+}
+
+// Retorna o índice do usuário com o e-mail passado
+int indiceUsuarioPorEmail(char email[CARACTERES_EMAIL]) {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return ERRO;
+    }
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+
+    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+    fclose(arquivoUsuarios);
+
+    for(int i = 0; i < nUsuarios; i++) {
+        if(strcmp(email, usuarios[i].email) == 0) return i;
+    }
+
+    return ERRO;
+}
+
+// Retorna o índice do usuário com o identificador passado
+int indiceUsuarioPorID(char id[CARACTERES_ID]) {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return ERRO;
+    }
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+
+    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+    fclose(arquivoUsuarios);
+
+    for(int i = 0; i < nUsuarios; i++) {
+        if(strcmp(id, usuarios[i].id) == 0) return i;
+    }
+
+    return ERRO;
 }
 
 // Cadastra um novo usuário e o adiciona ao arquivo
@@ -282,6 +340,11 @@ void cadastrarUsuario() {
         if(idExiste(id) == true) printf("NOME DE USUARIO JA CADASTRADO\n");
     } while(idExiste(id) == true);
 
+    printf("NOME DE EXIBICAO\n");
+    printf(" : ");
+    fgets(nomeExibicao, CARACTERES_NOME_EXIBICAO, stdin);
+    removeQuebra(nomeExibicao);
+
     strcpy(usuarios[nUsuarios - 1].email, email);
     strcpy(usuarios[nUsuarios - 1].id, id);
     strcpy(usuarios[nUsuarios - 1].nomeExibicao, nomeExibicao);
@@ -311,20 +374,112 @@ void listaUsuarios() {
 
     fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
     usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-
-    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+    if(nUsuarios > 0) {
+        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
     fclose(arquivoUsuarios);
 
     printf("Numero de usuarios cadastrado: %d\n", nUsuarios);
 
     printf("%-*s\t", CARACTERES_EMAIL, "E-mail");
     printf("%-*s\t", CARACTERES_SENHA, "Senha");
-    printf("%-*s\n", CARACTERES_ID, "Nome de Usuario");
+    printf("%-*s\t", CARACTERES_ID, "Identificador");
+    printf("%-*s\n", CARACTERES_NOME_EXIBICAO, "Nome");
     for(int i = 0; i < nUsuarios; i++) {
         printf("%-*s\t", CARACTERES_EMAIL, usuarios[i].email);
         printf("%-*s\t", CARACTERES_SENHA, usuarios[i].senha);
-        printf("%-*s\n", CARACTERES_ID, usuarios[i].id);
+        printf("%-*s\t", CARACTERES_ID, usuarios[i].id);
+        printf("%-*s\n", CARACTERES_NOME_EXIBICAO, usuarios[i].nomeExibicao);
     }
+}
+
+int fazerLogin() {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return LOGIN_SEM_LOGIN;
+    }
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+    if(nUsuarios > 0) {
+        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
+    fclose(arquivoUsuarios);
+
+    int indiceUsuario;
+    char email[CARACTERES_EMAIL];
+    char id[CARACTERES_ID];
+    char senha[CARACTERES_EMAIL];
+    int escolha;
+    
+    do {
+        printf("Fazer login com:\n");
+        printf("1 - E-mail\n");
+        printf("2 - Nome de usuario\n");
+        printf(" : ");
+        scanf("%d%*c", &escolha);
+    } while(escolha != 1 && escolha != 2);
+
+    switch(escolha) {
+        case 1:
+            do {
+            printf("E-MAIL\n");
+            printf(" : ");
+            fgets(email, CARACTERES_EMAIL, stdin);
+            removeQuebra(email);
+            } while(emailExiste(email) == false);
+
+            indiceUsuario = indiceUsuarioPorEmail(email);
+
+            do {
+                printf("SENHA\n");
+                printf(" : ");
+                fgets(senha, CARACTERES_SENHA, stdin);
+                removeQuebra(senha);
+            if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
+                bool tentarNovamente;
+                printf("SENHA INCORRETA\n");
+                printf("1 - Tentar novamente\n");
+                printf("0 - Sair");
+                scanf("%d%*c", &tentarNovamente);
+                if(tentarNovamente == false) return LOGIN_SEM_LOGIN;
+            }
+            } while(strcmp(senha, usuarios[indiceUsuario].senha) != 0);
+        break;
+
+        case 2:
+            do {
+            printf("NOME DE USUARIO\n");
+            printf(" : ");
+            fgets(id, CARACTERES_ID, stdin);
+            removeQuebra(id);
+            } while(idExiste(id) == false);
+            
+            indiceUsuario = indiceUsuarioPorID(id);
+
+            do {
+                printf("SENHA\n");
+                printf(" : ");
+                fgets(senha, CARACTERES_SENHA, stdin);
+                removeQuebra(senha);
+            if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
+                bool tentarNovamente;
+                printf("SENHA INCORRETA\n");
+                printf("1 - Tentar novamente\n");
+                printf("0 - Sair");
+                scanf("%d%*c", &tentarNovamente);
+                if(tentarNovamente == false) return LOGIN_SEM_LOGIN;
+            }
+            } while(strcmp(senha, usuarios[indiceUsuario].senha) != 0);
+        break;
+    }
+    
+    return indiceUsuario;
 }
 
     //  MAIN  //
@@ -342,10 +497,26 @@ int main(int argc, char ** argv) {
     // Tenta abrir o arquivo com as avaliações, se não existir, cria
     if(fopen(ARQUIVO_AVALIACOES, "rb") == NULL) fopen(ARQUIVO_AVALIACOES, "wb");
 
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+    int loginAtual = LOGIN_SEM_LOGIN;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+    if(nUsuarios > 0) {
+        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
+    fclose(arquivoUsuarios);
+
     int escolha;
     do {
+        if(loginAtual != LOGIN_SEM_LOGIN) printf("Logado como: %s\n", usuarios[loginAtual].nomeExibicao);
         printf("1 - Cadastrar usuario\n");
         printf("2 - Listar usuarios\n");
+        if(loginAtual == LOGIN_SEM_LOGIN) printf("3 - Fazer login\n");
+        else printf("3 - Desfazer login\n");
         printf("0 - Sair\n");
         // printf(" - \n");
         printf(" : ");
@@ -358,6 +529,11 @@ int main(int argc, char ** argv) {
 
             case 2:
             listaUsuarios();
+            break;
+
+            case 3:
+            if(loginAtual == LOGIN_SEM_LOGIN) loginAtual = fazerLogin();
+            else loginAtual = LOGIN_SEM_LOGIN;
             break;
         }
 
