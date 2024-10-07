@@ -31,20 +31,22 @@
 
     //  CONSTANTES RETORNO  //
 
-#define SUCESSO 0
-#define ERRO -1
+#define SUCESSO 0  // Saída genérica de sucesso
+#define ERRO -1  // Saída genérica de erro
 
-#define ERRO_SENHA_CARACTERES_INSUFICIENTES  1
-#define ERRO_SENHA_SEM_NUMEROS               2
-#define ERRO_SENHA_SEM_MAIUSCULAS            3
+#define ERRO_SENHA_CARACTERES_INSUFICIENTES  1 // Saída de erro para senha com caracteres insuficientes
+#define ERRO_SENHA_SEM_NUMEROS               2 // Saída de erro para senha sem o mínimo de números
+#define ERRO_SENHA_SEM_MAIUSCULAS            3 // Saída de erro para senha sem o minimo de maiúsculas
 
-#define LOGIN_SEM_LOGIN -1
+    //  CONSTANTES LOGIN  //
+
+#define LOGIN_SEM_LOGIN -1 // Valor de login usado para usuário sem login
 
     //  CONSTANTES GERAIS  //
 
 typedef unsigned int bool;
-#define true 1
-#define false 0
+#define true (1 == 1)
+#define false (1 == 0)
 
     //  ESTRUTURAS  //
     
@@ -95,9 +97,7 @@ typedef struct avaliacao_e {
 
     //  FUNCOES  //
 
-/* Verifica se existe o e-mail digitado
- - true/false
-*/
+// Verifica se existe o e-mail digitado
 bool emailExiste(char email[CARACTERES_EMAIL]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
@@ -126,9 +126,7 @@ bool emailExiste(char email[CARACTERES_EMAIL]) {
     return false;
 }
 
-/* Verifica se existe o ID de usuário digitado
- - true/false
-*/
+// Verifica se existe o ID de usuário digitado
 bool idExiste(char id[CARACTERES_ID]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
@@ -189,7 +187,8 @@ bool validaEmail(char email[CARACTERES_EMAIL]) {
         // Conta a quantidade de arrobas no e-mail
         if (email[i] == '@') {
             nArrobas++;
-            posicaoArroba = i; // Armazena a posição da arroba
+            // Armazena a posição da arroba
+            posicaoArroba = i; 
         }
     }
 
@@ -203,7 +202,8 @@ bool validaEmail(char email[CARACTERES_EMAIL]) {
             nPontosDepoisDoArroba++;
             // Verifica se o próximo caractere é um ponto
             if (j + 1 < tamanho && email[j + 1] == '.') {
-                return false; // Retorna falso se houver ponto seguido de ponto
+                // Retorna falso se houver ponto seguido de ponto
+                return false; 
             }
         }
     }
