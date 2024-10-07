@@ -1,543 +1,534 @@
-    //  INCLUSÕES  //
-
+// Inclusões
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
-    //  CONSTANTES ARQUIVOS  //
+// Constantes
+#define MAX_CHAR_NOME   (30 + 1) // Tamanho máximo do nome do usuário
+#define MAX_CHAR_EMAIL  (30 + 1)
+#define MAX_CHAR_SENHA  (20 + 1)
 
-#define ARQUIVO_USUARIOS "fm_usuarios.bin" // Arquivo onde estão armazendados os usuários
-#define ARQUIVO_PRODUTOS "fm_produtos.bin" // Arquivo onde estão armazendados os produtos
-#define ARQUIVO_AVALIACOES "fm_avaliacoes.bin" // Arquivo onde estão armazendados as avaliações
+#define MAX_CHAR_NOME_PRODUTO (40 + 1)
+#define MAX_CHAR_DESCRICAO    (128 + 1)
 
-    //  CONSTANTES USUÁRIOS  //
+#define SIM 1
+#define NAO 0
 
-#define CARACTERES_EMAIL (40 + 1) // Máximo de caracteres de um e-mail
-#define CARACTERES_NOME_EXIBICAO (40 + 1) // Máximo de caracteres de um nome de exibição
-#define CARACTERES_ID (30 + 1)  // Máximo de caracteres de um identificador
-#define CARACTERES_SENHA (30 + 1)  // Máximo de caracteres de uma senha
-#define MINIMO_CARACTERES_SENHA (8)  // Mínimo de caracteres de uma senha
-#define MINIMO_MAIUSCULAS_SENHA (1)  // Mínimo de caracteres de uma senha
-#define MINIMO_NUMEROS_SENHA (1)  // Mínimo de caracteres de uma senha
+// Erros
+#define USUARIO_SEM_LOGIN -1
 
-    //  CONSTANTES PRODUTOS  //
+// Arquivos
+#define ARQUIVO_USUARIOS "usuarios_freemarket"
 
-#define CARACTERES_NOME_PRODUTO (30 + 1)  // Máximo de caracteres de um nome de produto
-#define CARACTERES_DESCRICAO_PRODUTO (255 + 1)  // Máximo de caracteres de uma descrição de produto
+// Saídas 
+#define SUCESSO 0
 
-    //  CONSTANTES AVALIAÇÕES  //
+#define ERRO_BUSCAR_SEM_CORRESPONDENTE -1
 
-#define CARACTERES_MENSAGEM (300 + 1)  // Máximo de caracteres de uma avaliação
+/* DEPOIS A GENTE PREOCUPA COM AVALIACAO
+    VAMO AOS POUCOS
+typedef struct avaliacao_s {
 
-    //  CONSTANTES RETORNO  //
+    // Informações de quem mandou
+    char autorMensagem[MAX_CHAR_USUARIO];
+    char autorMensagemID[MAX_CHAR_ID];
 
-#define SUCESSO 0  // Saída genérica de sucesso
-#define ERRO -1  // Saída genérica de erro
+    // Avaliação
+    int nota; // 0 a 5 (estrelas)
+    char * mensagem;
 
-#define ERRO_SENHA_CARACTERES_INSUFICIENTES  1 // Saída de erro para senha com caracteres insuficientes
-#define ERRO_SENHA_SEM_NUMEROS               2 // Saída de erro para senha sem o mínimo de números
-#define ERRO_SENHA_SEM_MAIUSCULAS            3 // Saída de erro para senha sem o minimo de maiúsculas
-
-    //  CONSTANTES LOGIN  //
-
-#define LOGIN_SEM_LOGIN -1 // Valor de login usado para usuário sem login
-
-    //  CONSTANTES GERAIS  //
-
-typedef unsigned int bool;
-#define true (1 == 1)
-#define false (1 == 0)
-
-    //  ESTRUTURAS  //
-    
-/* 
-    #### Usuário
-    - email : E-mail do usuário
-    - senha : Senha do usuário
-    - id: Identificador do usuário
-    - nomeExibicao: Nome de exibição do usuário
-*/
-typedef struct usuario_e {
-    char email[CARACTERES_EMAIL];
-    char senha[CARACTERES_SENHA];
-    char id[CARACTERES_ID];
-    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
-} usuario_t;
-
-/* 
-    #### Produto
-    - idVendedor : Identificador do vendedor
-    - id : Identificador do produto
-    - nome: Nome do produto
-    - nota: Nota média do produto
-*/
-typedef struct produto_e {
-    char idVendedor[CARACTERES_ID];
-    char id[CARACTERES_ID];
-    char nome[CARACTERES_NOME_PRODUTO];
-    char descricao[CARACTERES_DESCRICAO_PRODUTO];
-    int  nota;
-} produto_t;
-
-/*
-    #### Avaliacao
-    - idAvaliacao: Identificador da avaliação
-    - idProduto: Identificador do produto avaliado
-    - idComprador: Identificador do comprador que avaliou
-    - mensagem: Mensagem da avaliação
-    - nota: Nota dada para o produto
-*/
-typedef struct avaliacao_e {
-    char idAvaliacao[CARACTERES_ID];
-    char idProduto[CARACTERES_ID];
-    char idComprador[CARACTERES_ID];
-    char mensagem[CARACTERES_MENSAGEM];
-    int  nota;
 } avaliacao_t;
 
-    //  FUNCOES  //
-
-// Verifica se existe o e-mail digitado
-bool emailExiste(char email[CARACTERES_EMAIL]) {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return true;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-        fclose(arquivoUsuarios);
-    } else return false;
-
-    // Passa por todos os usuários, comparando o e-mail digitado para verificar se o e-mail já está cadastrado
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(email, usuarios[i].email) == 0) {
-            return true;
-        }
-    }
-
-    // Se chegou aqui, o e-mail não foi cadastrado anteriormente
-    return false;
-}
-
-// Verifica se existe o ID de usuário digitado
-bool idExiste(char id[CARACTERES_ID]) {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return false;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-        fclose(arquivoUsuarios);
-    } else return false;
-
-    // Passa por todos os usuários, comparando o ID digitado para verificar se o ID já está cadastrado
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(id, usuarios[i].id) == 0) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/* Verifica se a senha é válida
- - ERRO_SENHA_CARACTERES_INSUFICIENTES 
- - ERRO_SENHA_SEM_NUMEROS
- - ERRO_SENHA_SEM_MAIUSCULAS
 */
-int validaSenha(char senha[CARACTERES_SENHA]) {
-    int tamanho = strlen(senha);
-    int nNumeros = 0, nMaiusculas = 0;
-    for(int i = 0; i < tamanho; i++) {
-        if(senha[i] > '0' && senha[i] < '9') nNumeros++;
-        if(senha[i] > 'A' && senha[i] < 'Z') nMaiusculas++;
-    }
 
-    if(tamanho < MINIMO_CARACTERES_SENHA) return ERRO_SENHA_CARACTERES_INSUFICIENTES;
-    if(nNumeros < MINIMO_NUMEROS_SENHA) return ERRO_SENHA_SEM_NUMEROS;
-    if(nMaiusculas < MINIMO_MAIUSCULAS_SENHA) return ERRO_SENHA_SEM_MAIUSCULAS;
+// Estrutura do produto
+typedef struct produto_s { //obs: a chave é do lado do nome! nao é! é sim!
 
-    return SUCESSO;
-}
+    // Informações básicas do produto
+    char nomeProduto[MAX_CHAR_NOME_PRODUTO];
+    char descricaoProduto[MAX_CHAR_DESCRICAO];
 
-/* Verifica se o e-mail é válido (formatado como "#@#.#")
- - true/false
-*/
-bool validaEmail(char email[CARACTERES_EMAIL]) {
-    int tamanho = strlen(email);
-    int nArrobas = 0;
-    int posicaoArroba;
+    int nImagens;
+    char * imagens;
+    
+    int estoque;
 
-    // Verifica cada caractere do e-mail
-    for (int i = 0; i < tamanho; i++) {
-        // Conta a quantidade de arrobas no e-mail
-        if (email[i] == '@') {
-            nArrobas++;
-            // Armazena a posição da arroba
-            posicaoArroba = i; 
-        }
-    }
+    // Avaliacoes do produto
+    // int nAvaliacoes;
+    // avaliacao_t * avaliacoes; 
+    
+} produto_t;
 
-    // Se houver mais de um arroba ou nenhum, retorna falso
-    if (nArrobas != 1) return false;
+// Estrutura do usuário
+typedef struct usuario_s
+{
+    int ID;
+    char nome[MAX_CHAR_NOME];
+    char email[MAX_CHAR_EMAIL];
+    char senha[MAX_CHAR_SENHA];
+    produto_t * produtos;
+    int nProdutos;
+    
+    
+} usuario_t;
 
-    // Verifica os pontos após o arroba
-    int nPontosDepoisDoArroba = 0;
-    for (int j = posicaoArroba + 1; j < tamanho; j++) {
-        if (email[j] == '.') {
-            nPontosDepoisDoArroba++;
-            // Verifica se o próximo caractere é um ponto
-            if (j + 1 < tamanho && email[j + 1] == '.') {
-                // Retorna falso se houver ponto seguido de ponto
-                return false; 
-            }
-        }
-    }
+// Tipo para quando retornar códigos de erro
+typedef int erro_t;
 
-    // Se não houver um ponto após o arroba, retorna falso
-    if (nPontosDepoisDoArroba < 1) return false;
-
-    // Se chegou até aqui, o e-mail é válido
-    return true; 
-} 
-
-// Remove a quebra de linha ('\n') no final de uma string
-void removeQuebra(char string[]) {
+// Remove a quebra de linha de uma string
+void removeQuebra(char string[])
+{
     int tamanho = strlen(string);
-    if(tamanho > 0) string[tamanho - 1] = '\0';
-    return;
+    if(tamanho > 0 && string[tamanho - 1] == '\n') string[tamanho - 1] = '\0';
 }
 
-// Retorna o índice do usuário com o e-mail passado
-int indiceUsuarioPorEmail(char email[CARACTERES_EMAIL]) {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return ERRO;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-
-    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-    fclose(arquivoUsuarios);
-
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(email, usuarios[i].email) == 0) return i;
-    }
-
-    return ERRO;
+// Realoca o vetor imagens para ter o tamanho <novoTamanho>
+char * alocarVetorImagens(char * imagens, int novoTamanho) {
+    return (char*)realloc(imagens, novoTamanho * sizeof(char));
 }
 
-// Retorna o índice do usuário com o identificador passado
-int indiceUsuarioPorID(char id[CARACTERES_ID]) {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return ERRO;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
+// Função para listar os produtos de um usuário, e escolher um produto, retornando seu indice
+int escolherProduto(usuario_t usuario)
+{
+    if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+    int indiceProduto;
 
-    fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-    fclose(arquivoUsuarios);
-
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(id, usuarios[i].id) == 0) return i;
+    // Printa todos os produtos do usuário
+    for(int i = 0; i < usuario.nProdutos; i++) {
+        printf("%d - %s\n", (i + 1), usuario.produtos[i].nomeProduto);
     }
 
-    return ERRO;
-}
-
-// Cadastra um novo usuário e o adiciona ao arquivo
-void cadastrarUsuario() {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-    }
-    fclose(arquivoUsuarios);
-
-    nUsuarios++;
-    usuarios = realloc(usuarios, sizeof(usuario_t) * nUsuarios);
-    if(usuarios == NULL) printf("Erro ao realocar a memoria\n");
-    char email[CARACTERES_EMAIL];
-    char senha[CARACTERES_SENHA];
-    char id[CARACTERES_ID];
-    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
-
-    // Lê o e-mail digitado até ser um e-mail válido
+    // Pede o usuário que produto quer editar
     do {
-        printf("E-MAIL\n");
-        printf(" : ");
-        fgets(email, CARACTERES_EMAIL, stdin);
-        removeQuebra(email);
-        if(emailExiste(email) == true) printf("E-MAIL JA CADASTRADO\n");
-        if(validaEmail(email) == false) printf("E-MAIL INVALIDO\n");
-    } while(emailExiste(email) == true || validaEmail(email) == false);
+        printf("Escolha o produto (somente o numero)\n : ");
+        scanf("%d%*c", &indiceProduto);
+        indiceProduto--;
+        if(indiceProduto > usuario.nProdutos || indiceProduto < 0) printf("PRODUTO INVALIDO\n");
+    } while (indiceProduto > usuario.nProdutos || indiceProduto < 0);
 
-    // Lê a senha digitada até ser uma senha válida
-    do {
-        printf("SENHA\n");
-        printf("deve conter:\n");
-        printf(" - %d caracteres;\n", MINIMO_CARACTERES_SENHA);
-        printf(" - %d letras maiusculas;\n", MINIMO_MAIUSCULAS_SENHA);
-        printf(" - %d numeros;\n", MINIMO_NUMEROS_SENHA);
-        printf(" : ");
-        fgets(senha, CARACTERES_SENHA, stdin);
-        removeQuebra(senha);
-        if(validaSenha(senha) != SUCESSO) {
-            switch (validaSenha(senha)) {
-            case ERRO_SENHA_CARACTERES_INSUFICIENTES:
-                printf(" - A SENHA DEVE CONTER AO MENOS %d CARACTERES\n", MINIMO_CARACTERES_SENHA);
-            break;
-
-            case ERRO_SENHA_SEM_MAIUSCULAS:
-                printf(" - A SENHA DEVE CONTER AO MENOS 1 LETRA MAIUSCULA\n");
-            break;
-
-            case ERRO_SENHA_SEM_NUMEROS:
-                printf(" - A SENHA DEVE CONTER AO MENOS 1 NYMERO\n");
-            break;
-            }
-        }
-    } while(validaSenha(senha) != SUCESSO);
-
-    // Lê o identificador do usuário
-    do {
-        printf("NOME DE USUARIO\n");
-        printf(" : ");
-        fgets(id, CARACTERES_ID, stdin);
-        removeQuebra(id);
-        if(idExiste(id) == true) printf("NOME DE USUARIO JA CADASTRADO\n");
-    } while(idExiste(id) == true);
-
-    printf("NOME DE EXIBICAO\n");
-    printf(" : ");
-    fgets(nomeExibicao, CARACTERES_NOME_EXIBICAO, stdin);
-    removeQuebra(nomeExibicao);
-
-    strcpy(usuarios[nUsuarios - 1].email, email);
-    strcpy(usuarios[nUsuarios - 1].id, id);
-    strcpy(usuarios[nUsuarios - 1].nomeExibicao, nomeExibicao);
-    strcpy(usuarios[nUsuarios - 1].senha, senha);
-
-    arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "wb");
-    if(arquivoUsuarios == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return;
-    }
-    fwrite(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    fwrite(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-    fclose(arquivoUsuarios);
-
-    return;
+    return indiceProduto;
 }
 
-// Lista todos os usuários cadastrados
-void listaUsuarios() {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-    }
-    fclose(arquivoUsuarios);
-
-    printf("Numero de usuarios cadastrado: %d\n", nUsuarios);
-
-    printf("%-*s\t", CARACTERES_EMAIL, "E-mail");
-    printf("%-*s\t", CARACTERES_SENHA, "Senha");
-    printf("%-*s\t", CARACTERES_ID, "Identificador");
-    printf("%-*s\n", CARACTERES_NOME_EXIBICAO, "Nome");
-    for(int i = 0; i < nUsuarios; i++) {
-        printf("%-*s\t", CARACTERES_EMAIL, usuarios[i].email);
-        printf("%-*s\t", CARACTERES_SENHA, usuarios[i].senha);
-        printf("%-*s\t", CARACTERES_ID, usuarios[i].id);
-        printf("%-*s\n", CARACTERES_NOME_EXIBICAO, usuarios[i].nomeExibicao);
-    }
-}
-
-int fazerLogin() {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        printf("Erro na abertura do arquivo\n");
-        return LOGIN_SEM_LOGIN;
-    }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-    }
-    fclose(arquivoUsuarios);
+int buscaUsuario(usuario_t *usuario, int nUsuarios) {
 
     int indiceUsuario;
-    char email[CARACTERES_EMAIL];
-    char id[CARACTERES_ID];
-    char senha[CARACTERES_EMAIL];
-    int escolha;
+
+    for(int i = 0; i<nUsuarios; i++) {
     
-    do {
-        printf("Fazer login com:\n");
-        printf("1 - E-mail\n");
-        printf("2 - Nome de usuario\n");
-        printf(" : ");
-        scanf("%d%*c", &escolha);
-    } while(escolha != 1 && escolha != 2);
-
-    switch(escolha) {
-        case 1:
-            do {
-            printf("E-MAIL\n");
-            printf(" : ");
-            fgets(email, CARACTERES_EMAIL, stdin);
-            removeQuebra(email);
-            } while(emailExiste(email) == false);
-
-            indiceUsuario = indiceUsuarioPorEmail(email);
-
-            do {
-                printf("SENHA\n");
-                printf(" : ");
-                fgets(senha, CARACTERES_SENHA, stdin);
-                removeQuebra(senha);
-            if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
-                bool tentarNovamente;
-                printf("SENHA INCORRETA\n");
-                printf("1 - Tentar novamente\n");
-                printf("0 - Sair");
-                scanf("%d%*c", &tentarNovamente);
-                if(tentarNovamente == false) return LOGIN_SEM_LOGIN;
-            }
-            } while(strcmp(senha, usuarios[indiceUsuario].senha) != 0);
-        break;
-
-        case 2:
-            do {
-            printf("NOME DE USUARIO\n");
-            printf(" : ");
-            fgets(id, CARACTERES_ID, stdin);
-            removeQuebra(id);
-            } while(idExiste(id) == false);
-            
-            indiceUsuario = indiceUsuarioPorID(id);
-
-            do {
-                printf("SENHA\n");
-                printf(" : ");
-                fgets(senha, CARACTERES_SENHA, stdin);
-                removeQuebra(senha);
-            if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
-                bool tentarNovamente;
-                printf("SENHA INCORRETA\n");
-                printf("1 - Tentar novamente\n");
-                printf("0 - Sair");
-                scanf("%d%*c", &tentarNovamente);
-                if(tentarNovamente == false) return LOGIN_SEM_LOGIN;
-            }
-            } while(strcmp(senha, usuarios[indiceUsuario].senha) != 0);
-        break;
+    printf("%d - %s\n", (i + 1), usuario[i].nome);
     }
+    
+    do{
+        printf("Digite o número do usuario desejado: ");
+        scanf("%d%*c", &indiceUsuario);
+        
+        indiceUsuario-=1;//Passa onde q o usuario ta armazenado
+        
+        for(int i = 0; i < usuario->nProdutos; i++) {
+            
+        printf("%d - %s\n", (i + 1), usuario[indiceUsuario].produtos[i].nomeProduto);
+        
+        }
+        
+        if(indiceUsuario > nUsuarios || indiceUsuario < 0) printf("USUARIO NÃO ENCONTRADO\n");
+        
+    }while(indiceUsuario > nUsuarios || indiceUsuario < 0);
     
     return indiceUsuario;
 }
 
-    //  MAIN  //
+void compraProduto(usuario_t *usuario, int nUsuarios) {
+    
+    int indiceProduto = buscaUsuario(usuario, nUsuarios); // TROCAR DEPOIS PARA PASSAR O PRODUTO DESEJADO
+    int nUnidades;
 
-int main(int argc, char ** argv) {
-    // Tenta abrir o arquivo com os usuários, se não existir, cria
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        FILE * arquivoUsuario = fopen(ARQUIVO_USUARIOS, "wb");
-        int nUsuarios = 0;
-        fwrite(&nUsuarios, sizeof(int), 1, arquivoUsuario);
-        fclose(arquivoUsuario);
+    if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
+    {
+        printf("NAO HA PRODUTOS CADASTRADOS\n");
+        return;
     }
-    // Tenta abrir o arquivo com os produtos, se não existir, cria
-    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) fopen(ARQUIVO_PRODUTOS, "wb");
-    // Tenta abrir o arquivo com as avaliações, se não existir, cria
-    if(fopen(ARQUIVO_AVALIACOES, "rb") == NULL) fopen(ARQUIVO_AVALIACOES, "wb");
+    if(usuario->produtos[indiceProduto].estoque <= 0) {
+        //Verifica no indice informado se o produto ja foi comprado
+        printf("PRODUTO SEM ESTOQUE\n");
+        return;
+    } else printf("ESTOQUE PRODUTO: %d", usuario->produtos[indiceProduto].estoque);
+    
+    do
+    {
+        printf("Numero de unidades: ");
+        scanf("%d%*c", &nUnidades);
 
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
-    int loginAtual = LOGIN_SEM_LOGIN;
+        if(nUnidades <= usuario->produtos[indiceProduto].estoque) 
+        {
+            usuario->produtos[indiceProduto].estoque -= nUnidades;
+            printf("PRODUTO COMPRADO COM SUCESSO\n");
+            return;
+        } 
+        else
+        {
+            printf("NAO HA UNIDADES SUFICIENTES\n");
+            printf("1 - Tentar novamente\n");
+            printf("0 - Voltar\n : ");
+            int escolha;
+            scanf("%d%*c", &escolha);
+            if(escolha == 0) return;
+        }
+    } while(usuario->produtos[indiceProduto].estoque);    
+}
 
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+void apagarProduto(usuario_t * usuario) {
+    int indiceProduto = escolherProduto(* usuario);
+    if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
+    {
+        printf("NAO HA PRODUTOS CADASTRADOS\n");
+        return;
     }
-    fclose(arquivoUsuarios);
 
-    int escolha;
+    for (int i = indiceProduto; i < (* usuario).nProdutos - 1; i++) {
+        usuario->produtos[i] = usuario->produtos[i + 1];        
+    }
+
+    (usuario->nProdutos)--;
+    usuario->produtos = (produto_t *)realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos));
+
+    printf("O PRODUTO FOI REMOVIDO COM SUCESSO\n");
+}
+// Cadastra um produto novo em um usuário
+void cadastraProduto(usuario_t * usuario) { 
+   
+    usuario->produtos = (produto_t *)realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos + 1));
+    printf("Nome produto: ");
+    fgets(usuario->produtos[usuario->nProdutos].nomeProduto, MAX_CHAR_NOME_PRODUTO, stdin);
+    removeQuebra(usuario->produtos[usuario->nProdutos].nomeProduto);
+    printf("Descricao produto: ");
+    fgets(usuario->produtos[usuario->nProdutos].descricaoProduto, MAX_CHAR_DESCRICAO, stdin);
+    removeQuebra(usuario->produtos[usuario->nProdutos].descricaoProduto);
+    
+    //Imagens fica pra dps
+    printf("Estoque produto: ");
+    scanf("%d%*c", &usuario->produtos[usuario->nProdutos].estoque);
+    
+    (usuario->nProdutos)++;
+}
+
+int validaEmail(char email[])
+{
+    int tamanho = strlen(email);
+    for(int i = 1; i < tamanho; i++)
+    {
+        if(email[i] == '@') 
+        {
+            for(int o = i + 1; o < tamanho; o++)
+            {
+                if(email[o] == '.' && o != tamanho)
+                {
+                    return SIM;
+                }
+            }
+        }
+    }
+
+    return NAO;
+}
+
+// Procura um usuario com um nome <usuario_>
+int buscarUsuario(usuario_t *usuarios, int nUsuarios, char email_[MAX_CHAR_EMAIL]) 
+{
+    for(int i = 0; i < nUsuarios; i++) 
+    {
+        if(strcmp(usuarios[i].email, email_) == 0) return i;
+    }
+
+    return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+}
+
+// Cadastra o usuario com um usuario unico e uma senha
+void cadastraUsuario(usuario_t ** usuarios, int * nUsuarios)
+{
+    char email_[MAX_CHAR_EMAIL];
+    char senha_[MAX_CHAR_SENHA];
+    * usuarios = realloc(* usuarios, sizeof(usuario_t) * (* nUsuarios + 1));
+
+    // Recebe um e-mail e verifica se ja esta cadastrado
+    do
+    {
+        printf("E-Mail\n : ");
+        fgets(email_, MAX_CHAR_EMAIL, stdin);
+        removeQuebra(email_);
+        if(validaEmail(email_) == NAO) printf("E-MAIL INVALIDO\n");
+        if(buscarUsuario(* usuarios, * nUsuarios, email_) != ERRO_BUSCAR_SEM_CORRESPONDENTE) printf("E-MAIL JA UTILIZADO\n");
+    } while(buscarUsuario(* usuarios, * nUsuarios, email_) != ERRO_BUSCAR_SEM_CORRESPONDENTE || validaEmail(email_) == NAO);//Se digitar certo sai do loop
+    strcpy((* usuarios)[* nUsuarios].email, email_);
+
+    // Cadastra a senha
+    printf("Senha: ");
+    fgets((* usuarios)[* nUsuarios].senha, MAX_CHAR_SENHA, stdin);
+    removeQuebra((* usuarios)[* nUsuarios].senha);
+
+    printf("Nome de Exibicao\n : ");
+    fgets((* usuarios)[* nUsuarios].nome, MAX_CHAR_NOME, stdin);
+
+    (* usuarios)[* nUsuarios].nProdutos = 0; // Configura o número de produtos vinculados ao usuário
+    (* usuarios)[* nUsuarios].produtos = NULL; // Configura o vetor de produtos vinculados ao usuário
+
+    (* usuarios)[* nUsuarios].ID = (* nUsuarios); // Determina o ID do usuário
+
+    // Incrementa o contador de usuarios
+    (* nUsuarios)++;
+
+}
+
+// Faz o login do usuario usando o login e a senha
+void loginUsuario(int * loginAtual, usuario_t * usuarios, int nUsuarios)
+{
+    char email_[MAX_CHAR_EMAIL];
+    char senha_[MAX_CHAR_SENHA];
+
+    int indiceUsuario;
+
+    if(nUsuarios == 0)
+    {
+        printf("NENHUM USUARIO FOI CADASTRADO AINDA. CRIE UM CADASTRO E DEPOIS RETORNE\n");
+        return;
+    }
+
+    // Procura um usuario para fazer o login
+    do
+    {
+        // Pede o nome do usuário
+        printf("E-mail\n : ");
+        fgets(email_, MAX_CHAR_EMAIL, stdin);
+        removeQuebra(email_);
+
+        if(buscarUsuario(usuarios, nUsuarios, email_) == ERRO_BUSCAR_SEM_CORRESPONDENTE)
+        {
+            printf("E-MAIL INVALIDO\n1 - Voltar ao menu inicial\n2 - Tentar novamente\n : "); //Verifica se o usuario existe
+            int escolha;
+            scanf("%d%*c", &escolha);
+            if(escolha == 1) return;
+        }
+        else indiceUsuario = buscarUsuario(usuarios, nUsuarios, email_); //Pega o indice retornado pela funcao
+
+    }while(buscarUsuario(usuarios, nUsuarios, email_) == ERRO_BUSCAR_SEM_CORRESPONDENTE);
+
+    if (indiceUsuario != -1) { 
+        // Pessoa não quis sair da tela de login. Portanto, digitou um nome válido
+        do
+        {
+            printf("Senha: ");
+            fgets(senha_, MAX_CHAR_SENHA, stdin);
+            removeQuebra(senha_);
+            // Compara a senha digitada com a do usuario
+            if(strcmp(usuarios[indiceUsuario].senha, senha_) != 0) printf("SENHA INVALIDA\n");
+        } while(strcmp(usuarios[indiceUsuario].senha, senha_) != 0);
+
+        // Define o login atual
+        * loginAtual = indiceUsuario;
+        //O login do usario agora e seu indice
+    }
+}
+
+// Lista os usuarios para verificar se o cadastro foi feito corretamente
+void listaUsuarios(usuario_t * usuarios, int nUsuarios)
+{
+    for(int i = 0; i < nUsuarios; i++)
+    {
+        printf("%d/%d - %d\t%s\n", i + 1, nUsuarios, usuarios[i].ID, usuarios[i].senha);
+    }
+}
+
+void editarImagemProduto(produto_t * produto) {
+
+}
+
+void editarProduto(usuario_t *usuario) {
+    
+    // indice do produto selecionado pelo usuário
+    int indiceProduto = escolherProduto(* usuario);
+
+    if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
+    {
+        printf("NAO HA PRODUTOS CADASTRADOS\n");
+        return;
+    }
+
+    int escolha; // o que a pessoa escolheu editar
+    int temp_val = -1;
+    char temp_sinal;
+    
+    produto_t * _produto = &usuario->produtos[indiceProduto];
+    // endereço do produto
+
     do {
-        if(loginAtual != LOGIN_SEM_LOGIN) printf("Logado como: %s\n", usuarios[loginAtual].nomeExibicao);
-        printf("1 - Cadastrar usuario\n");
-        printf("2 - Listar usuarios\n");
-        if(loginAtual == LOGIN_SEM_LOGIN) printf("3 - Fazer login\n");
-        else printf("3 - Desfazer login\n");
-        printf("0 - Sair\n");
-        // printf(" - \n");
-        printf(" : ");
+        // Pergunta o que quer editar
+        printf("\nO que deseja editar?\n");
+        printf("\t 1 - Nome\n");
+        printf("\t 2 - Descricao\n");
+        printf("\t 3 - Imagens\n");
+        printf("\t 4 - Estoque\n");
+        printf("\t 0 - Sair\n");
+        printf("Escolha: ");
+        scanf("%i%*c", &escolha);
+
+        // Casos de escolha
+        switch (escolha) {
+        
+            case 1: // nome
+                printf("Nome atual %s\n", _produto->nomeProduto);
+                printf("Novo nome\n : ");
+                fgets(_produto->nomeProduto, MAX_CHAR_NOME_PRODUTO, stdin);
+                removeQuebra(_produto->nomeProduto);
+
+                printf("NOME EDITADO COM SUCESSO\n");
+
+                break;
+
+            case 2: // Descrição
+                printf("Descricao atual:\n %s\n", _produto->descricaoProduto);
+                printf("Digite a nova descricao do produto\n : ");
+                fgets(_produto->descricaoProduto, MAX_CHAR_DESCRICAO, stdin);
+                removeQuebra(_produto->descricaoProduto);
+
+                printf("DESCRICAO EDITADA COM SUCESSO\n");
+            
+                break;
+
+            case 3: // Imagem
+                editarImagemProduto(_produto);
+            
+                break;
+
+            case 4: // Estoque
+                // Pede a ação pro usuário
+                printf("Estoque atual: %d\n", usuario->produtos[indiceProduto].estoque);
+                // printf("Digite apenas um numero para ser o novo estoque do produto\n");
+                // printf("Digite (A) para adicionar ou (R) para remover N produtos\n(Ex.: R 1 para retirar 1\t 4 para o novo estoque ser 4)\n");
+                printf("Novo estoque\n : ");
+                
+                if (scanf(" %d", &temp_val) >= 0) {
+                    // Se tiver digitado apenas número, já coloca o novo valor
+                    usuario->produtos[indiceProduto].estoque = temp_val; 
+                }/* else {
+                    // Se digitou um caractere, vê qual foi e em função dele, executa algo
+                    
+                    scanf("%c", &temp_sinal); // Lê o caractere q digitou
+
+                    if (temp_sinal == 'A' || temp_sinal == 'a') {
+                        // Adiciona o valor que usuário digitou pro estoque
+                        scanf("%i", &temp_val); // Lê o numero
+
+                        _produto->estoque += temp_val;
+
+                        printf("Adicionado %i ao estoque. Novo estoque: %i\n", temp_val, _produto->estoque);
+                    } else if (temp_sinal == 'R' || temp_sinal == 'r') {
+                        // Remove o valor que usuário digitou pro estoque
+                        scanf("%i", &temp_val); // Lê o numero
+
+                        _produto->estoque -= temp_val;
+
+                        // Caso foi retirado mais do que deveria
+                        if (_produto-> estoque < 0) {
+                            printf("Foram retirados mais do que havia.\nO novo estoque é 0");
+                        } else printf("Removendo %i ao estoque. Novo estoque: %i\n", temp_val, _produto->estoque);
+
+                    } else printf("Operacao invalida!");
+                }
+                */
+                break;
+
+                case 5:
+                    printf("Em breve :)\n");
+                break;
+
+                default: // parar de editar (digitou 0)
+                break;
+        }
+    } while (escolha != 0);
+}
+
+int main(int argc, char ** argv)
+{
+    usuario_t * usuarios = NULL;
+    
+    //Sempre incia sem login
+    int loginAtual = USUARIO_SEM_LOGIN;
+    int nUsuarios = 0;
+    int escolha = -1;
+    
+    do{
+
+        // Verifica se o usuário está com login ou não.
+        // Se estiver, mostra em que conta você está
+        if(loginAtual == USUARIO_SEM_LOGIN) printf("Sem login\n");
+        else printf("Logado como: %s\n", usuarios[loginAtual].nome);
+
+        // Pede para o usuário escolher
+        printf("1 - Cadastrar usuario\n2 - Logar\n3 - Deslogar\n4 - Cadastrar produto\n5 - Editar produto\n6 - Excluir produto\n7 - Comprar produto\n8 - Buscar usuario\n0 - Sair");
+
+        printf("\nescolha: ");
         scanf("%d%*c", &escolha);
 
-        switch(escolha) {
-            case 1:
-            cadastrarUsuario();
-            break;
+        // Casos de escolha
+        switch(escolha)
+        {
+            
+        case 1: //Cadastro
+        cadastraUsuario(&usuarios, &nUsuarios);
+        break;
+        
+        case 2: //Login
+        loginUsuario(&loginAtual, usuarios, nUsuarios);
+        break;
 
-            case 2:
-            listaUsuarios();
-            break;
+        case 3: // Desfaz o login
+        loginAtual = USUARIO_SEM_LOGIN;
+        break;
 
-            case 3:
-            if(loginAtual == LOGIN_SEM_LOGIN) loginAtual = fazerLogin();
-            else loginAtual = LOGIN_SEM_LOGIN;
-            break;
+        case 4:
+        if(loginAtual != USUARIO_SEM_LOGIN)
+        {
+            cadastraProduto(&usuarios[loginAtual]);
+        } else printf("VOCE PRECISA ESTAR LOGADO EM UMA CONTA\n");
+        break;
+        
+        case 5:
+        if(loginAtual != USUARIO_SEM_LOGIN)
+        {
+            editarProduto(&usuarios[loginAtual]);
+        } else printf("VOCE PRECISA ESTAR LOGADO EM UMA CONTA\n");
+        break;
+        
+        case 6:
+        if(loginAtual != USUARIO_SEM_LOGIN)
+        {
+            apagarProduto(&usuarios[loginAtual]);
+        } else printf("VOCE PRECISA ESTAR LOGADO EM UMA CONTA\n");
+        break;
+        
+        case 7:
+        if(loginAtual != USUARIO_SEM_LOGIN)
+        {
+            compraProduto(&usuarios[loginAtual], nUsuarios);
+        } else printf("VOCE PRECISA ESTAR LOGADO EM UMA CONTA\n");
+        break;
+        
+        case 8:
+        if(loginAtual != USUARIO_SEM_LOGIN)
+        {
+            buscaUsuario(&usuarios[loginAtual], nUsuarios);
+        } else printf("VOCE PRECISA ESTAR LOGADO EM UMA CONTA\n");
+        break;
+        
+        case 0: // Encerra o programa
+        return SUCESSO;
+
+        break;
         }
-
-    } while(escolha != 0);
+    } while(escolha != 0); 
+    // O loop nunca chegará nessa parte sem ser parado.
+    // Entretanto, para facilitar a leitura, a condição foi colocada.
 
     return SUCESSO;
 }
