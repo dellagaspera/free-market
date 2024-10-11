@@ -20,7 +20,7 @@
 #define NAO 0
 
 #define MENU_PRI_OPCAO_MIN 0    // Opção mínima que o usuário pode escolher no menu principal
-#define MENU_PRI_OPCAO_MAX 12   // Opção máxima que o usuário pode escolher no menu principal
+#define MENU_PRI_OPCAO_MAX 13   // Opção máxima que o usuário pode escolher no menu principal
 
 // Arquivos
 #define ARQUIVO_USUARIOS "usuarios_freemarket"
@@ -104,6 +104,41 @@ char * alocarVetorImagens(char * imagens, int novoTamanho) {
 }
 
 // Função para listar os produtos de um usuário, e escolher um produto, retornando seu indice
+int escolherProdutoComId(usuario_t usuario)
+{
+    if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+
+    int idDigitado;
+
+    //Faz um loop e imprime todos os usuarios pra voce selecionar
+    //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
+
+    printf("ID\t| Nome\n");
+
+    // Loop em todos os produtos do usuário e printa o id e o nome do produto
+    for(int i = 0; i < usuario.nProdutos; i++) {
+        printf("%02d\t  %s\n", usuario.produtos[i].Id, usuario.produtos[i].nomeProduto);
+    }
+
+    // Pede o id
+    printf("Digite o id do produto: ");
+    scanf("%i%*c", &idDigitado);
+
+    // Loop até achar o produto com esse id
+    for(int i = 0; i < usuario.nProdutos; i++) {
+
+        if(usuario.produtos[i].Id == idDigitado) {
+            // O id do produto é igual ao id digitado pelo usuário.
+            return i;
+        }
+    }
+    
+    // Se chegou aqui, o usuário digitou um ID que não existe
+    return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+}
+
+
+// Função para listar os produtos de um usuário, e escolher um produto, retornando seu indice
 int escolherProduto(usuario_t usuario)
 {
     if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
@@ -130,30 +165,58 @@ int escolherProduto(usuario_t usuario)
 }
 
 int buscaUsuario(usuario_t *usuario, int nUsuarios) {
-    //Faz um loop e imprime todos os usuarios pra voce selecionar
-    //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
-
-    printf("Nomes\n");
-    for(int i = 0; i < nUsuarios; i++) {
-        printf("%s\n", usuario[i].nome);
-    }
+    
+    //Faz um loop e imprime todos os usuarios pra voce selecionar;
+    //Depois, faz um loop por todos dnv e vc digita um id e retorna o indice dele
 
     char tempVar[MAX_CHAR_ID];
-    printf("Digite o nome do usuario:"); // vai ser id dps
+
+    //
+    printf("%-20s| %-30s\n", "ID", "Nome");
+    for(int i = 0; i < nUsuarios; i++) {
+        printf("%-20s  %-30s\n", usuario[i].ID, usuario[i].nome);
+    }
+
+    // Pede o id que o usuario quer
+    printf("Digite o ID do usuario: ");
     fgets(tempVar, MAX_CHAR_ID, stdin);
     removeQuebra(tempVar);
 
+    // Loop em todos os usuários até achar um ID que seja igual ao digitado
     for(int i = 0; i < nUsuarios; i++) {
-
-        if(strcmp(tempVar, usuario[i].nome) == 0) {
+        if(strcmp(tempVar, usuario[i].ID) == 0) {
             return i;
         }
     }
 
+    // Se não achar um usuário com tal id
+    return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 }
 
-void compraProduto(usuario_t *usuario, int nUsuarios) {
+void listarProdutos(usuario_t *usuario, int nUsuarios) {
     
+    int indiceUsuario = buscaUsuario(usuario, nUsuarios);
+    
+    if (indiceUsuario == -1) {
+        return; // Retorna se o usuário não foi encontrado
+    }
+
+    // Verifica se o usuário tem produtos
+    if (usuario[indiceUsuario].nProdutos == 0) {
+        printf("Nenhum produto cadastrado para o usuario %s.\n", usuario[indiceUsuario].nome);
+        return;
+    }
+
+    // Lista os produtos do usuário
+    printf("%-2s | %-30s\n", "ID", "Nome");
+    for (int i = 0; i < usuario[indiceUsuario].nProdutos; i++) {
+        printf("%02d   %s\n", i, usuario[indiceUsuario].produtos[i].nomeProduto);
+    }
+
+    esperar_apertarEnter();
+}
+
+void compraProduto(usuario_t *usuario, int nUsuarios) {   
     int indiceProduto = buscaUsuario(usuario, nUsuarios); // TROCAR DEPOIS PARA PASSAR O PRODUTO DESEJADO
     int nUnidades;
 
@@ -214,14 +277,13 @@ void apagarProduto(usuario_t * usuario) {
 // Cadastra um produto novo em um usuário
 void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos) { 
 
-    produto_t produtoCadastrado;
-   
-    // Aloca para produtos do usuario
+    //Se não estiver aloca, aloca
     if (usuario->produtos == NULL) {
         usuario->produtos = malloc(sizeof(produto_t));
         if (usuario->produtos == NULL) {
             return;
         }
+//Verifica novamente se alocou, caso positivo, realoca. Caso negativo, aloca e entra na condição positiva
     } else if ((usuario->produtos = realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos + 1))) == NULL) {
         return;
     }
@@ -246,10 +308,10 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
     usuario->produtos[usuario->nProdutos].Id = *nProdutos;
 
     // Aloca para o novo produto & Seta para o produto que acabou de criar
-    
     if ((*PRODUTOS = realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1))) == NULL) {
         return;
     }
+    
     (*PRODUTOS)[*nProdutos] = usuario->produtos[usuario->nProdutos];
 
     usuario->produtos[usuario->nProdutos].nAvaliacoes = 0; //
@@ -280,6 +342,8 @@ int validaEmail(char email[])
     return NAO;
 }
 
+
+
 // Retorna o índice de um usuário com o email "_email"
 int buscarUsuarioPorEmail(usuario_t *usuarios, int nUsuarios, char _email[MAX_CHAR_EMAIL]) 
 {
@@ -292,12 +356,23 @@ int buscarUsuarioPorEmail(usuario_t *usuarios, int nUsuarios, char _email[MAX_CH
 }
 
 
+int verificaID(char ID_[], int nUsuarios, usuario_t *usuario) {
+
+    for(int i = 0; i < nUsuarios; i++) {
+        if(strcmp(ID_, usuario[i].ID) == 0) {
+            printf("ID já existente\n");
+            return NAO;
+        }
+    }
+    return SIM;
+}
 
 // Cadastra o usuario com um usuario unico e uma senha
 void cadastraUsuario(usuario_t ** usuarios, int * nUsuarios)
 {
     char email_[MAX_CHAR_EMAIL];
     char senha_[MAX_CHAR_SENHA];
+    char ID_[MAX_CHAR_ID];
     * usuarios = realloc(*usuarios, sizeof(usuario_t) * (* nUsuarios + 1));
 
     // Recebe um e-mail e verifica se ja esta cadastrado
@@ -315,15 +390,25 @@ void cadastraUsuario(usuario_t ** usuarios, int * nUsuarios)
     printf("Senha: ");
     fgets((* usuarios)[* nUsuarios].senha, MAX_CHAR_SENHA, stdin);
     removeQuebra((* usuarios)[* nUsuarios].senha);
+    
+    //Cadastra o ID
+    do {
+        printf("ID: ");
+        fgets(ID_, MAX_CHAR_ID, stdin);
+        removeQuebra(ID_);
+    } while (verificaID(ID_, *nUsuarios, *usuarios) == NAO);
 
+    strcpy((*usuarios)[*nUsuarios].ID, ID_);
+    
+    //Cadastra o nome
     printf("Nome de Exibicao\n : ");
     fgets((* usuarios)[* nUsuarios].nome, MAX_CHAR_NOME, stdin);
     removeQuebra((* usuarios)[* nUsuarios].nome);
+    
+    
 
     (* usuarios)[* nUsuarios].nProdutos = 0; // Configura o número de produtos vinculados ao usuário
     (* usuarios)[* nUsuarios].produtos = NULL; // Configura o vetor de produtos vinculados ao usuário
-
- //   (* usuarios)[* nUsuarios].ID = (* nUsuarios); // Determina o ID do usuário
 
     (* usuarios)[* nUsuarios].nFavoritos = 0; // Configura o número de produtos vinculados ao usuário
     (* usuarios)[* nUsuarios].produtosFavoritos = NULL; // Configura o vetor de produtos vinculados ao usuário
@@ -388,7 +473,7 @@ void listaUsuarios(usuario_t * usuarios, int nUsuarios)
 {
     for(int i = 0; i < nUsuarios; i++)
     {
-        printf("%d/%d - %d\t%s\n", i + 1, nUsuarios, usuarios[i].ID, usuarios[i].senha);
+        printf("%d/%d - %s\t%s\n", i + 1, nUsuarios, usuarios[i].ID, usuarios[i].senha);
     }
 }
 
@@ -501,6 +586,7 @@ void editarProduto(usuario_t *usuario) {
     } while (escolha != 0);
 }
 
+//Função para fazer avaliação de um produto
 void fazerAvaliacao(usuario_t *usuarios, int nUsuarios) {
 
     
@@ -567,11 +653,9 @@ void listarAvaliacoes(usuario_t *usuarios, int nUsuarios) {
     printf("Avaliacoes para o produto %s:\n", produto.nomeProduto);
     for (int i = 0; i < produto.nAvaliacoes; i++) {
         printf("Nota %d\n ",produto.avaliacoes[i].nota);
+        printf("Avaliação: %s\n", produto.avaliacoes[i].mensagem);
     }
     
-
-    
-            
     esperar_apertarEnter();
 } 
 
@@ -584,8 +668,12 @@ erro_t favoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) 
     // Pede para escolher um usuário
     indiceUsuario = buscaUsuario(usuarios, nUsuarios);
 
+    printf("\n"); // Estética
+
     // Pede para escolher um produto do usuário já escolhido
-    indiceProduto = escolherProduto(usuarios[indiceUsuario]);
+    indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
+
+    printf("\n"); // Estética
 
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");            
@@ -620,10 +708,11 @@ void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProd
 
     // Obtem o vetor que salva os id's dos produtos & o tamanho do vetor
     int * indicesProdutosFavoritos = usuario.produtosFavoritos;
+
     int nFavoritos = usuario.nFavoritos;
 
     // mensagem legal
-    printf("%-13s | %30s | %30s\n", "Id do Produto", "Nome do Produto", "Vendedor do Produto");
+    printf("%-13s | %-30s | %-30s\n", "Id do Produto", "Nome do Produto", "Vendedor do Produto");
 
     // Loop entre todos os valores de id de produto (no vetor
     // de indices dos produtos favoritos, "indicesProdutosFavoritos")
@@ -633,9 +722,12 @@ void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProd
         produtoAtual = PRODUTOS[indicesProdutosFavoritos[i]];
 
         // Printa as informações do produto
-        printf("%13i   %30s   %30s\n", produtoAtual.Id, produtoAtual.nomeProduto, "N/A");
+        printf("%-13i   %-30s   %-30s\n", produtoAtual.Id, produtoAtual.nomeProduto, usuario.nome);
 
     }
+
+    // Espera pro usuário poder ver as coisas
+    esperar_apertarEnter();
 
 }
 
@@ -650,7 +742,6 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
     
     // Verifica se está ou não com login
     if(loginAtual == USUARIO_SEM_LOGIN) printf("Voce esta com acesso limitado!\nFaca login para ter acesso a todas as funcoes.\n");
-    else printf("Bem vindo, %s!\n", Usuarios[loginAtual].nome);
 
     // Se o usuário estiver logado
     if (loginAtual != USUARIO_SEM_LOGIN) {
@@ -659,12 +750,13 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
         printf("\n\tCadastro\n\n1 - Criar uma nova conta\n2 - Fazer login em outra conta\n3 - Sair da conta");
         printf("\n\n\tProduto\n\n4 - Cadastrar produto\n5 - Editar produto\n6 - Excluir produto\n7 - Comprar produto\n8 - Avaliar produto");
         printf("\n9 - Listar avaliacoes de um Produto\n10 - Favoritar um produto\n11 - Listar os favoritos do usuario");
-        printf("\n\n\tGerais\n\n12 - Buscar usuario\n0 - Sair do programa\n\n");
+        printf("\n\n\tGerais\n\n12 - Buscar usuario\n13 - Listar produtos\n0 - Sair do programa\n\n");
 
         // Loop até o usuário digitar algo válido
         do {
-            printf("O que deseja fazer?: ");
+            printf("Bem vindo, %s! O que deseja fazer? ", Usuarios[loginAtual].nome);
             scanf("%d%*c", &escolha);
+            if (escolha == 100) { break; };
             
             if (escolha < MENU_PRI_OPCAO_MIN || escolha > MENU_PRI_OPCAO_MAX) {
                 printf("Opcao invalida, tente novamente.\n\n");
@@ -689,6 +781,8 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 
     }
 
+    printf("\n"); // Estética
+
     return escolha;
 
 }
@@ -697,13 +791,12 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 int main(int argc, char ** argv)
 {
     usuario_t * usuarios = NULL;
+    int nUsuarios = 0;
 
     produto_t * PRODUTOS = NULL;
     int nProdutos = 0;
     
-    //Sempre incia sem login
-    int loginAtual = USUARIO_SEM_LOGIN;
-    int nUsuarios = 0;
+    int loginAtual = USUARIO_SEM_LOGIN; // Sempre incia sem login
     int escolha = -1;
     
     do{
@@ -728,7 +821,6 @@ int main(int argc, char ** argv)
             break;
 
         case 4: // Cadastrar um produto
-
             cadastraProduto(&usuarios[loginAtual], &PRODUTOS, &nProdutos);
             break;
 
@@ -753,7 +845,8 @@ int main(int argc, char ** argv)
             break;
 
         case 10: // Favoritar um produto
-            favoritarProduto(&usuarios[loginAtual], nUsuarios, loginAtual);
+
+            favoritarProduto(usuarios, nUsuarios, loginAtual);
             break;
 
         case 11: // Lista os favoritos do usuário
@@ -763,7 +856,14 @@ int main(int argc, char ** argv)
         case 12: // Buscar um usuário
             buscaUsuario(usuarios, nUsuarios);
             break;
+        
+        case 13://Lista todos os produtos de um usuário
+            listarProdutos(usuarios, nUsuarios);
+            break;
 
+        case 100:
+            break;
+            
         case 0: // Encerra o programa
             return SUCESSO;
             break;
