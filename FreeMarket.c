@@ -213,9 +213,18 @@ void apagarProduto(usuario_t * usuario) {
 }
 // Cadastra um produto novo em um usuário
 void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos) { 
+
+    produto_t produtoCadastrado;
    
-    // Aloca
-    usuario->produtos = (produto_t *)realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos + 1));
+    // Aloca para produtos do usuario
+    if (usuario->produtos == NULL) {
+        usuario->produtos = malloc(sizeof(produto_t));
+        if (usuario->produtos == NULL) {
+            return;
+        }
+    } else if ((usuario->produtos = realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos + 1))) == NULL) {
+        return;
+    }
 
     // Pede o nome do produto
     printf("Nome produto: ");
@@ -237,16 +246,18 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
     usuario->produtos[usuario->nProdutos].Id = *nProdutos;
 
     // Aloca para o novo produto & Seta para o produto que acabou de criar
-    *PRODUTOS = (produto_t *)realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1));
-    *PRODUTOS[*nProdutos] = usuario->produtos[usuario->nProdutos];
+    
+    if ((*PRODUTOS = realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1))) == NULL) {
+        return;
+    }
+    (*PRODUTOS)[*nProdutos] = usuario->produtos[usuario->nProdutos];
+
+    usuario->produtos[usuario->nProdutos].nAvaliacoes = 0; //
+    usuario->produtos[usuario->nProdutos].avaliacoes = NULL;
 
     // Implementa a quantidade de produtos do usuário e de produtos totais
     (usuario->nProdutos)++;
     (*nProdutos)++;
-
-    usuario->produtos[usuario->nProdutos - 1].nAvaliacoes = 0;
-    usuario->produtos[usuario->nProdutos - 1].avaliacoes = NULL;
-      
 }
 
 int validaEmail(char email[])
@@ -287,7 +298,7 @@ void cadastraUsuario(usuario_t ** usuarios, int * nUsuarios)
 {
     char email_[MAX_CHAR_EMAIL];
     char senha_[MAX_CHAR_SENHA];
-    * usuarios = realloc(* usuarios, sizeof(usuario_t) * (* nUsuarios + 1));
+    * usuarios = realloc(*usuarios, sizeof(usuario_t) * (* nUsuarios + 1));
 
     // Recebe um e-mail e verifica se ja esta cadastrado
     do
@@ -367,7 +378,7 @@ void loginUsuario(int * loginAtual, usuario_t * usuarios, int nUsuarios)
         } while(strcmp(usuarios[indiceUsuario].senha, senha_) != 0);
 
         // Define o login atual
-        * loginAtual = indiceUsuario;
+        *loginAtual = indiceUsuario;
         //O login do usario agora e seu indice
     }
 }
@@ -495,7 +506,7 @@ void fazerAvaliacao(usuario_t *usuarios, int nUsuarios) {
     
     int indiceUsuario = buscaUsuario(usuarios, nUsuarios);
        
-    int indiceProduto = escolherProduto(* usuarios);
+    int indiceProduto = escolherProduto(usuarios[indiceUsuario]);
 
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");            
@@ -622,7 +633,7 @@ void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProd
         produtoAtual = PRODUTOS[indicesProdutosFavoritos[i]];
 
         // Printa as informações do produto
-        printf("%13i   %30s   %30s", produtoAtual.Id, produtoAtual.nomeProduto, "N/A");
+        printf("%13i   %30s   %30s\n", produtoAtual.Id, produtoAtual.nomeProduto, "N/A");
 
     }
 
@@ -734,7 +745,7 @@ int main(int argc, char ** argv)
             break;
 
         case 8: // Fazer uma avaliação
-            fazerAvaliacao(&usuarios[loginAtual], nUsuarios);
+            fazerAvaliacao(usuarios, nUsuarios);
             break;
         
         case 9: // Lista as avaliações de um produto
