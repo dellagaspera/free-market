@@ -10,24 +10,29 @@
 #define ARQUIVO_PRODUTOS "fm_produtos.bin" // Arquivo onde estão armazendados os produtos
 #define ARQUIVO_AVALIACOES "fm_avaliacoes.bin" // Arquivo onde estão armazendados as avaliações
 
+    //  CONSTANTES GERAIS  //
+
+
     //  CONSTANTES USUÁRIOS  //
 
-#define CARACTERES_EMAIL (40 + 1) // Máximo de caracteres de um e-mail
-#define CARACTERES_NOME_EXIBICAO (40 + 1) // Máximo de caracteres de um nome de exibição
-#define CARACTERES_ID (30 + 1)  // Máximo de caracteres de um identificador
-#define CARACTERES_SENHA (30 + 1)  // Máximo de caracteres de uma senha
-#define MINIMO_CARACTERES_SENHA (8)  // Mínimo de caracteres de uma senha
-#define MINIMO_MAIUSCULAS_SENHA (1)  // Mínimo de caracteres de uma senha
-#define MINIMO_NUMEROS_SENHA (1)  // Mínimo de caracteres de uma senha
+#define USUARIO_CARACTERES_EMAIL (40 + 1) // Máximo de caracteres de um e-mail
+#define USUARIO_CARACTERES_NOME (40 + 1) // Máximo de caracteres de um nome de usuário
+#define USUARIO_CARACTERES_ID (30 + 1)  // Máximo de caracteres de um identificador de usuário
+#define USUARIO_CARACTERES_SENHA (30 + 1)  // Máximo de caracteres de uma senha
+#define USUARIO_SENHA_MINIMO_CARACTERES (8)  // Mínimo de caracteres de uma senha
+#define USUARIO_SENHA_MINIMO_MAIUSCULAS (1)  // Mínimo de caracteres de uma senha
+#define USUARIO_SENHA_MINIMO_NUMEROS (1)  // Mínimo de caracteres de uma senha
 
     //  CONSTANTES PRODUTOS  //
 
-#define CARACTERES_NOME_PRODUTO (30 + 1)  // Máximo de caracteres de um nome de produto
-#define CARACTERES_DESCRICAO_PRODUTO (255 + 1)  // Máximo de caracteres de uma descrição de produto
+#define PRODUTO_CARACTERES_NOME (100 + 1)  // Máximo de caracteres de um nome de produto
+#define PRODUTO_CARACTERES_ID (PRODUTO_CARACTERES_NOME)  // Máximo de caracteres de um identificador de produto
+#define PRODUTO_CARACTERES_DESCRICAO (50 + 1)  // Máximo de caracteres de uma descrição de produto
 
     //  CONSTANTES AVALIAÇÕES  //
 
-#define CARACTERES_MENSAGEM (300 + 1)  // Máximo de caracteres de uma avaliação
+#define AVALIACAO_CARACTERES_MENSAGEM (300 + 1)  // Máximo de caracteres de uma avaliação
+#define AVALIACAO_CARACTERES_ID (USUARIO_CARACTERES_ID + PRODUTO_CARACTERES_ID + 1)  // Máximo de caracteres de uma avaliação
 
     //  CONSTANTES RETORNO  //
 
@@ -58,10 +63,10 @@ typedef unsigned int bool;
     - nomeExibicao: Nome de exibição do usuário
 */
 typedef struct usuario_e {
-    char email[CARACTERES_EMAIL];
-    char senha[CARACTERES_SENHA];
-    char id[CARACTERES_ID];
-    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
+    char email[USUARIO_CARACTERES_EMAIL];
+    char senha[USUARIO_CARACTERES_SENHA];
+    char id[USUARIO_CARACTERES_ID];
+    char nome[USUARIO_CARACTERES_NOME];
 } usuario_t;
 
 /* 
@@ -72,11 +77,11 @@ typedef struct usuario_e {
     - nota: Nota média do produto
 */
 typedef struct produto_e {
-    char idVendedor[CARACTERES_ID];
-    char id[CARACTERES_ID];
-    char nome[CARACTERES_NOME_PRODUTO];
-    char descricao[CARACTERES_DESCRICAO_PRODUTO];
-    int  nota;
+    char idVendedor[PRODUTO_CARACTERES_ID];
+    char id[PRODUTO_CARACTERES_ID];
+    char nome[PRODUTO_CARACTERES_NOME];
+    char descricao[PRODUTO_CARACTERES_DESCRICAO];
+    int  estoque;
 } produto_t;
 
 /*
@@ -88,17 +93,17 @@ typedef struct produto_e {
     - nota: Nota dada para o produto
 */
 typedef struct avaliacao_e {
-    char idAvaliacao[CARACTERES_ID];
-    char idProduto[CARACTERES_ID];
-    char idComprador[CARACTERES_ID];
-    char mensagem[CARACTERES_MENSAGEM];
+    char idAvaliacao[AVALIACAO_CARACTERES_ID];
+    char idProduto[PRODUTO_CARACTERES_ID];
+    char idComprador[USUARIO_CARACTERES_ID];
+    char mensagem[AVALIACAO_CARACTERES_MENSAGEM];
     int  nota;
 } avaliacao_t;
 
     //  FUNCOES  //
 
 // Verifica se existe o e-mail digitado
-bool emailExiste(char email[CARACTERES_EMAIL]) {
+bool emailExiste(char email[USUARIO_CARACTERES_EMAIL]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return true;
@@ -127,7 +132,34 @@ bool emailExiste(char email[CARACTERES_EMAIL]) {
 }
 
 // Verifica se existe o ID de usuário digitado
-bool idExiste(char id[CARACTERES_ID]) {
+bool idUsuarioExiste(char id[USUARIO_CARACTERES_ID]) {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return false;
+    }
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+    if(nUsuarios > 0) {
+        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+        fclose(arquivoUsuarios);
+    } else return false;
+
+    // Passa por todos os usuários, comparando o ID digitado para verificar se o ID já está cadastrado
+    for(int i = 0; i < nUsuarios; i++) {
+        if(strcmp(id, usuarios[i].id) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+// Verifica se existe o ID de usuário digitado
+bool idProdutoExiste(char id[PRODUTO_CARACTERES_ID]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return false;
@@ -159,7 +191,7 @@ bool idExiste(char id[CARACTERES_ID]) {
  - ERRO_SENHA_SEM_NUMEROS
  - ERRO_SENHA_SEM_MAIUSCULAS
 */
-int validaSenha(char senha[CARACTERES_SENHA]) {
+int validaSenha(char senha[USUARIO_CARACTERES_SENHA]) {
     int tamanho = strlen(senha);
     int nNumeros = 0, nMaiusculas = 0;
     for(int i = 0; i < tamanho; i++) {
@@ -167,17 +199,15 @@ int validaSenha(char senha[CARACTERES_SENHA]) {
         if(senha[i] > 'A' && senha[i] < 'Z') nMaiusculas++;
     }
 
-    if(tamanho < MINIMO_CARACTERES_SENHA) return ERRO_SENHA_CARACTERES_INSUFICIENTES;
-    if(nNumeros < MINIMO_NUMEROS_SENHA) return ERRO_SENHA_SEM_NUMEROS;
-    if(nMaiusculas < MINIMO_MAIUSCULAS_SENHA) return ERRO_SENHA_SEM_MAIUSCULAS;
+    if(tamanho < USUARIO_SENHA_MINIMO_CARACTERES) return ERRO_SENHA_CARACTERES_INSUFICIENTES;
+    if(nMaiusculas < USUARIO_SENHA_MINIMO_MAIUSCULAS) return ERRO_SENHA_SEM_MAIUSCULAS;
+    if(nNumeros < USUARIO_SENHA_MINIMO_NUMEROS) return ERRO_SENHA_SEM_NUMEROS;
 
     return SUCESSO;
 }
 
-/* Verifica se o e-mail é válido (formatado como "#@#.#")
- - true/false
-*/
-bool validaEmail(char email[CARACTERES_EMAIL]) {
+// Verifica se o e-mail é válido (formatado como "#@#.#")
+bool validaEmail(char email[USUARIO_CARACTERES_EMAIL]) {
     int tamanho = strlen(email);
     int nArrobas = 0;
     int posicaoArroba;
@@ -215,15 +245,42 @@ bool validaEmail(char email[CARACTERES_EMAIL]) {
     return true; 
 } 
 
+// Verifica se o ID é válido (apenas letras minúsculas, números, pontos e underline)
+bool validaIDUsuario(char id[USUARIO_CARACTERES_ID]) {
+    int tamanho = strlen(id);
+
+    for(int i = 0; i < tamanho; i++) {
+        if(!((id[i] >= 'a' && id[i] <= 'z') || (id[i] >= '0' && id[i] <= '9') || id[i] == '.' || id[i] == '_')) return false;
+    }
+
+    return true;
+}
+
+// Gera um ID para o produto usando apenas letras minúsculas, hífens e numeros
+void geraIDProduto(char id[PRODUTO_CARACTERES_ID], char nome[PRODUTO_CARACTERES_NOME]) {
+    int tamanho = strlen(nome);
+    int nCaracteresPulados = 0;
+
+    for(int i = 0; i < tamanho; i++) { if(nome[i] >= 'A' && nome[i] <= 'Z') id[i - nCaracteresPulados] = nome[i] + 32;
+        else if(nome[i] >= 'a' && nome[i] <= 'z') id[i - nCaracteresPulados] = nome[i];
+        else if(nome[i] >= '0' && nome[i] <= '9') id[i - nCaracteresPulados] = nome[i];
+        else if(nome[i] == '-' || nome[i] == '.' || nome[i] == ' ') id[i - nCaracteresPulados] = '-';
+        else nCaracteresPulados++;
+    }
+    id[tamanho - nCaracteresPulados] = '\0';
+
+    return;
+}
+
 // Remove a quebra de linha ('\n') no final de uma string
 void removeQuebra(char string[]) {
     int tamanho = strlen(string);
-    if(tamanho > 0) string[tamanho - 1] = '\0';
+    if(tamanho > 0 && string[tamanho - 1] == '\n') string[tamanho - 1] = '\0';
     return;
 }
 
 // Retorna o índice do usuário com o e-mail passado
-int indiceUsuarioPorEmail(char email[CARACTERES_EMAIL]) {
+int indiceUsuarioPorEmail(char email[USUARIO_CARACTERES_EMAIL]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return ERRO;
@@ -246,7 +303,7 @@ int indiceUsuarioPorEmail(char email[CARACTERES_EMAIL]) {
 }
 
 // Retorna o índice do usuário com o identificador passado
-int indiceUsuarioPorID(char id[CARACTERES_ID]) {
+int indiceUsuarioPorID(char id[USUARIO_CARACTERES_ID]) {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return ERRO;
@@ -269,7 +326,7 @@ int indiceUsuarioPorID(char id[CARACTERES_ID]) {
 }
 
 // Cadastra um novo usuário e o adiciona ao arquivo
-void cadastrarUsuario() {
+void cadastraUsuario() {
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return;
@@ -289,16 +346,16 @@ void cadastrarUsuario() {
     nUsuarios++;
     usuarios = realloc(usuarios, sizeof(usuario_t) * nUsuarios);
     if(usuarios == NULL) printf("Erro ao realocar a memoria\n");
-    char email[CARACTERES_EMAIL];
-    char senha[CARACTERES_SENHA];
-    char id[CARACTERES_ID];
-    char nomeExibicao[CARACTERES_NOME_EXIBICAO];
+    char email[USUARIO_CARACTERES_EMAIL];
+    char senha[USUARIO_CARACTERES_SENHA];
+    char id[USUARIO_CARACTERES_ID];
+    char nome[USUARIO_CARACTERES_NOME];
 
     // Lê o e-mail digitado até ser um e-mail válido
     do {
         printf("E-MAIL\n");
         printf(" : ");
-        fgets(email, CARACTERES_EMAIL, stdin);
+        fgets(email, USUARIO_CARACTERES_EMAIL, stdin);
         removeQuebra(email);
         if(emailExiste(email) == true) printf("E-MAIL JA CADASTRADO\n");
         if(validaEmail(email) == false) printf("E-MAIL INVALIDO\n");
@@ -307,25 +364,25 @@ void cadastrarUsuario() {
     // Lê a senha digitada até ser uma senha válida
     do {
         printf("SENHA\n");
-        printf("deve conter:\n");
-        printf(" - %d caracteres;\n", MINIMO_CARACTERES_SENHA);
-        printf(" - %d letras maiusculas;\n", MINIMO_MAIUSCULAS_SENHA);
-        printf(" - %d numeros;\n", MINIMO_NUMEROS_SENHA);
+        // printf("deve conter:\n");
+        // printf(" - %d caracteres;\n", USUARIO_SENHA_MINIMO_CARACTERES);
+        // printf(" - %d letras maiusculas;\n", USUARIO_SENHA_MINIMO_MAIUSCULAS);
+        // printf(" - %d numeros;\n", USUARIO_SENHA_MINIMO_NUMEROS);
         printf(" : ");
-        fgets(senha, CARACTERES_SENHA, stdin);
+        fgets(senha, USUARIO_CARACTERES_SENHA, stdin);
         removeQuebra(senha);
         if(validaSenha(senha) != SUCESSO) {
             switch (validaSenha(senha)) {
             case ERRO_SENHA_CARACTERES_INSUFICIENTES:
-                printf(" - A SENHA DEVE CONTER AO MENOS %d CARACTERES\n", MINIMO_CARACTERES_SENHA);
+                printf(" - A SENHA DEVE CONTER AO MENOS %d CARACTERES\n", USUARIO_SENHA_MINIMO_CARACTERES);
             break;
 
             case ERRO_SENHA_SEM_MAIUSCULAS:
-                printf(" - A SENHA DEVE CONTER AO MENOS 1 LETRA MAIUSCULA\n");
+                printf(" - A SENHA DEVE CONTER AO MENOS %d LETRA MAIUSCULAS\n", USUARIO_SENHA_MINIMO_MAIUSCULAS);
             break;
 
             case ERRO_SENHA_SEM_NUMEROS:
-                printf(" - A SENHA DEVE CONTER AO MENOS 1 NYMERO\n");
+                printf(" - A SENHA DEVE CONTER AO MENOS %d NUMEROS\n", USUARIO_SENHA_MINIMO_NUMEROS);
             break;
             }
         }
@@ -335,19 +392,19 @@ void cadastrarUsuario() {
     do {
         printf("NOME DE USUARIO\n");
         printf(" : ");
-        fgets(id, CARACTERES_ID, stdin);
+        fgets(id, USUARIO_CARACTERES_ID, stdin);
         removeQuebra(id);
-        if(idExiste(id) == true) printf("NOME DE USUARIO JA CADASTRADO\n");
-    } while(idExiste(id) == true);
+        if(idUsuarioExiste(id) == true) printf("NOME DE USUARIO JA CADASTRADO\n");
+    } while(idUsuarioExiste(id) == true);
 
     printf("NOME DE EXIBICAO\n");
     printf(" : ");
-    fgets(nomeExibicao, CARACTERES_NOME_EXIBICAO, stdin);
-    removeQuebra(nomeExibicao);
+    fgets(nome, USUARIO_CARACTERES_NOME, stdin);
+    removeQuebra(nome);
 
     strcpy(usuarios[nUsuarios - 1].email, email);
     strcpy(usuarios[nUsuarios - 1].id, id);
-    strcpy(usuarios[nUsuarios - 1].nomeExibicao, nomeExibicao);
+    strcpy(usuarios[nUsuarios - 1].nome, nome);
     strcpy(usuarios[nUsuarios - 1].senha, senha);
 
     arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "wb");
@@ -382,15 +439,127 @@ void listaUsuarios() {
 
     printf("Numero de usuarios cadastrado: %d\n", nUsuarios);
 
-    printf("%-*s\t", CARACTERES_EMAIL, "E-mail");
-    printf("%-*s\t", CARACTERES_SENHA, "Senha");
-    printf("%-*s\t", CARACTERES_ID, "Identificador");
-    printf("%-*s\n", CARACTERES_NOME_EXIBICAO, "Nome");
+    printf("%-*s\t", USUARIO_CARACTERES_EMAIL, "E-mail");
+    printf("%-*s\t", USUARIO_CARACTERES_SENHA, "Senha");
+    printf("%-*s\t", USUARIO_CARACTERES_ID, "Identificador");
+    printf("%-*s\n", USUARIO_CARACTERES_NOME, "Nome");
     for(int i = 0; i < nUsuarios; i++) {
-        printf("%-*s\t", CARACTERES_EMAIL, usuarios[i].email);
-        printf("%-*s\t", CARACTERES_SENHA, usuarios[i].senha);
-        printf("%-*s\t", CARACTERES_ID, usuarios[i].id);
-        printf("%-*s\n", CARACTERES_NOME_EXIBICAO, usuarios[i].nomeExibicao);
+        printf("%-*s\t", USUARIO_CARACTERES_EMAIL, usuarios[i].email);
+        printf("%-*s\t", USUARIO_CARACTERES_SENHA, usuarios[i].senha);
+        printf("%-*s\t", USUARIO_CARACTERES_ID, usuarios[i].id);
+        printf("%-*s\n", USUARIO_CARACTERES_NOME, usuarios[i].nome);
+    }
+}
+
+// Cadastra um novo produto e o adiciona ao arquivo
+void cadastraProduto(int loginAtual) {
+    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return;
+    }
+    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
+    usuario_t * usuarios;
+    int nUsuarios;
+
+    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
+    if(nUsuarios > 0) {
+        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
+    fclose(arquivoUsuarios);
+
+    nUsuarios++;
+    usuarios = realloc(usuarios, sizeof(usuario_t) * nUsuarios);
+    if(usuarios == NULL) printf("Erro ao realocar a memoria\n");
+
+    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return;
+    }
+    FILE * arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "rb");
+    produto_t * produtos;
+    int nProdutos;
+
+    fread(&nProdutos, sizeof(int), 1, arquivoProdutos);
+    produtos = malloc(sizeof(produto_t) * nProdutos);
+    if(nProdutos > 0) {
+        fread(produtos, sizeof(usuario_t), nProdutos, arquivoProdutos);
+        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
+    fclose(arquivoProdutos);
+
+    nProdutos++;
+    produtos = realloc(produtos, sizeof(produto_t) * nProdutos);
+    if(produtos == NULL) printf("Erro ao realocar a memoria\n");
+
+    char idVendedor[USUARIO_CARACTERES_ID];
+    char id[PRODUTO_CARACTERES_ID];
+    char nome[PRODUTO_CARACTERES_NOME];
+    char descricao[PRODUTO_CARACTERES_DESCRICAO];
+    int  estoque;
+
+    strcpy(idVendedor, usuarios[loginAtual].id);
+
+    printf("NOME DO PRODUTO\n");
+    printf(" : ");
+    fgets(nome, PRODUTO_CARACTERES_NOME, stdin);
+    removeQuebra(nome);
+    
+    printf("DESCRICAO DO PRODUTO\n");
+    printf(" : ");
+    fgets(descricao, PRODUTO_CARACTERES_DESCRICAO, stdin);
+    removeQuebra(descricao);
+
+    printf("ESTOQUE DO PRODUTO\n");
+    printf(" : ");
+    scanf("%d%*c", &estoque);
+
+    geraIDProduto(id, nome);
+
+    strcpy(produtos[nProdutos - 1].nome, nome);
+    strcpy(produtos[nProdutos - 1].descricao, descricao);
+    strcpy(produtos[nProdutos - 1].idVendedor, idVendedor);
+    strcpy(produtos[nProdutos - 1].id, id);
+    produtos[nProdutos - 1].estoque = estoque;
+
+    arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "wb");
+    fwrite(&nProdutos, sizeof(int), 1, arquivoProdutos);
+    fwrite(produtos, sizeof(produto_t), nProdutos, arquivoProdutos);
+    fclose(arquivoProdutos);
+
+    return;
+}
+
+void listaProdutos() {
+    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
+        printf("Erro na abertura do arquivo\n");
+        return;
+    }
+    FILE * arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "rb");
+    produto_t * produtos;
+    int nProdutos;
+
+    fread(&nProdutos, sizeof(int), 1, arquivoProdutos);
+    produtos = malloc(sizeof(produto_t) * nProdutos);
+    if(nProdutos > 0) {
+        fread(produtos, sizeof(produto_t), nProdutos, arquivoProdutos);
+        if(produtos == NULL) printf("Erro ao ler dados do arquivo\n");
+    }
+    fclose(arquivoProdutos);
+
+    printf("%-*s\t", PRODUTO_CARACTERES_ID, "IDENTIFICADOR");
+    printf("%-*s\t", USUARIO_CARACTERES_ID, "VENDEDOR");
+    printf("%-*s\t", 10, "ESTOQUE");
+    printf("%-*s\t", PRODUTO_CARACTERES_NOME, "NOME");
+    printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO, "DESCRICAO");
+
+    for(int i = 0; i < nProdutos; i++) {
+        printf("%-*s\t", PRODUTO_CARACTERES_ID, produtos[i].id);
+    printf("%-*s\t", USUARIO_CARACTERES_ID, produtos[i].idVendedor);
+        printf("%-*d\t", 10,  produtos[i].estoque);
+        printf("%-*s\t", PRODUTO_CARACTERES_NOME,  produtos[i].nome);
+        printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO,  produtos[i].descricao);
     }
 }
 
@@ -412,9 +581,9 @@ int fazerLogin() {
     fclose(arquivoUsuarios);
 
     int indiceUsuario;
-    char email[CARACTERES_EMAIL];
-    char id[CARACTERES_ID];
-    char senha[CARACTERES_EMAIL];
+    char email[USUARIO_CARACTERES_EMAIL];
+    char id[USUARIO_CARACTERES_ID];
+    char senha[USUARIO_CARACTERES_EMAIL];
     int escolha;
     
     do {
@@ -430,7 +599,7 @@ int fazerLogin() {
             do {
             printf("E-MAIL\n");
             printf(" : ");
-            fgets(email, CARACTERES_EMAIL, stdin);
+            fgets(email, USUARIO_CARACTERES_EMAIL, stdin);
             removeQuebra(email);
             } while(emailExiste(email) == false);
 
@@ -439,7 +608,7 @@ int fazerLogin() {
             do {
                 printf("SENHA\n");
                 printf(" : ");
-                fgets(senha, CARACTERES_SENHA, stdin);
+                fgets(senha, USUARIO_CARACTERES_SENHA, stdin);
                 removeQuebra(senha);
             if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
                 bool tentarNovamente;
@@ -456,16 +625,16 @@ int fazerLogin() {
             do {
             printf("NOME DE USUARIO\n");
             printf(" : ");
-            fgets(id, CARACTERES_ID, stdin);
+            fgets(id, USUARIO_CARACTERES_ID, stdin);
             removeQuebra(id);
-            } while(idExiste(id) == false);
+            } while(idUsuarioExiste(id) == false);
             
             indiceUsuario = indiceUsuarioPorID(id);
 
             do {
                 printf("SENHA\n");
                 printf(" : ");
-                fgets(senha, CARACTERES_SENHA, stdin);
+                fgets(senha, USUARIO_CARACTERES_SENHA, stdin);
                 removeQuebra(senha);
             if(strcmp(senha, usuarios[indiceUsuario].senha) != 0) {
                 bool tentarNovamente;
@@ -487,13 +656,19 @@ int fazerLogin() {
 int main(int argc, char ** argv) {
     // Tenta abrir o arquivo com os usuários, se não existir, cria
     if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
-        FILE * arquivoUsuario = fopen(ARQUIVO_USUARIOS, "wb");
+        FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "wb");
         int nUsuarios = 0;
-        fwrite(&nUsuarios, sizeof(int), 1, arquivoUsuario);
-        fclose(arquivoUsuario);
+        fwrite(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
+        fclose(arquivoUsuarios);
     }
     // Tenta abrir o arquivo com os produtos, se não existir, cria
-    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) fopen(ARQUIVO_PRODUTOS, "wb");
+    // Tenta abrir o arquivo com os usuários, se não existir, cria
+    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
+        FILE * arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "wb");
+        int nProdutos = 0;
+        fwrite(&nProdutos, sizeof(int), 1, arquivoProdutos);
+        fclose(arquivoProdutos);
+    }
     // Tenta abrir o arquivo com as avaliações, se não existir, cria
     if(fopen(ARQUIVO_AVALIACOES, "rb") == NULL) fopen(ARQUIVO_AVALIACOES, "wb");
 
@@ -512,11 +687,16 @@ int main(int argc, char ** argv) {
 
     int escolha;
     do {
-        if(loginAtual != LOGIN_SEM_LOGIN) printf("Logado como: %s\n", usuarios[loginAtual].nomeExibicao);
+        if(loginAtual != LOGIN_SEM_LOGIN) printf("Logado como: %s\n", usuarios[loginAtual].nome);
         printf("1 - Cadastrar usuario\n");
         printf("2 - Listar usuarios\n");
-        if(loginAtual == LOGIN_SEM_LOGIN) printf("3 - Fazer login\n");
-        else printf("3 - Desfazer login\n");
+        if(loginAtual == LOGIN_SEM_LOGIN) {
+            printf("3 - Fazer login\n");
+        } else {
+            printf("3 - Desfazer login\n");
+            printf("4 - Cadastrar produto\n");
+            printf("5 - Listar produtos\n");
+        } 
         printf("0 - Sair\n");
         // printf(" - \n");
         printf(" : ");
@@ -524,7 +704,7 @@ int main(int argc, char ** argv) {
 
         switch(escolha) {
             case 1:
-            cadastrarUsuario();
+            cadastraUsuario();
             break;
 
             case 2:
@@ -534,6 +714,16 @@ int main(int argc, char ** argv) {
             case 3:
             if(loginAtual == LOGIN_SEM_LOGIN) loginAtual = fazerLogin();
             else loginAtual = LOGIN_SEM_LOGIN;
+            break;
+
+            case 4:
+            if(loginAtual != LOGIN_SEM_LOGIN) cadastraProduto(loginAtual);
+            else printf("FACA LOGIN PRIMEIRO\n");
+            break;
+
+            case 5:
+            if(loginAtual != LOGIN_SEM_LOGIN) listaProdutos();
+            else printf("FACA LOGIN PRIMEIRO\n");
             break;
         }
 
