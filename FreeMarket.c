@@ -1,18 +1,21 @@
 // Inclusões
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 // Constantes
-#define MAX_CHAR_NOME   (30 + 1) // Tamanho máximo do nome do usuário
-#define MAX_CHAR_EMAIL  (30 + 1)
-#define MAX_CHAR_SENHA  (20 + 1)
-#define MAX_CHAR_USUARIO (20 + 1)
-#define MAX_CHAR_ID     (20 + 1)
-
-#define MAX_CHAR_NOME_PRODUTO (40 + 1)
-#define MAX_CHAR_DESCRICAO    (128 + 1)
+    // Tamanhos máximos
+#define MAX_CHAR_NOME           (30 + 1)
+#define MAX_CHAR_EMAIL          (30 + 1)
+#define MAX_CHAR_SENHA          (20 + 1)
+#define MAX_CHAR_USUARIO        (20 + 1)
+#define MAX_CHAR_ID             (20 + 1)
+#define MAX_LINK                (200 + 1)
+#define MAX_CHAR_NOME_PRODUTO   (40 + 1)
+#define MAX_CHAR_DESCRICAO      (128 + 1)
+#define MAX_IMAGENS              10
 
 #define USUARIO_SEM_LOGIN -1
 
@@ -21,6 +24,23 @@
 
 #define MENU_PRI_OPCAO_MIN 0    // Opção mínima que o usuário pode escolher no menu principal
 #define MENU_PRI_OPCAO_MAX 14   // Opção máxima que o usuário pode escolher no menu principal
+
+// Constantes de imagem
+
+#define BUFFER_TAMANHO                  50000           // Tamanho do buffer para cada linha da imagem
+#define LINHA_COMANDO                   10000           // Tamanho máximo da linha de comando
+#define LIMIAR_INFERIOR_TAMANHO_IMAGEM  500             // Limiar inferior que considera o download com sucesso
+#define IMAGENS_COLORIDAS               true            // Se a imagem é colorida ou não
+#define IMAGEM_PRODUTO_NUMERO_COLUNAS   10              // Número de colunas da imagem
+
+// Nome do executável da ferramenta de download e conversão da imagem
+#ifdef __unix__ 
+#define FERRAMENTA_IMAGEM   "ascii-image-converter.bin"
+#else
+#define FERRAMENTA_IMAGEM   "ascii-image-converter.exe"
+#endif
+
+#define ARQUIVO_IMAGEM_TMP  "ascii_art.txt" // Nome do arquivo de sa�da tempor�rio da imagem
 
 // Arquivos
 #define ARQUIVO_USUARIOS "usuarios_freemarket"
@@ -32,6 +52,120 @@
 
 
 // bool EMANUEL_RECUPERACAO = true;
+
+
+/*  =====================================================  */
+/*  ================= Código de Imagens =================  */
+/*  =====================================================  */
+
+/// Estrutura que representa uma imagem em Ascii
+struct asciiImg_s {
+  uint8_t * bytes;
+  int nBytes;
+};
+
+/// Tipo "Imagem ASCII"
+typedef struct asciiImg_s asciiImg_t;
+
+/**
+ *  \brief Função que carrega uma imagem informada na URL.
+ *  
+ *  \param [in] colorido Define se a imagem ser� colorida.
+ *  \param [in] largura Define a largura da imagem gerada.
+ *  \return Endereço da estrutura com a imagem. 
+ *          Caso a imagem não tenha sido carregada corretamente, a função
+ *          retornará NULL.
+ */
+asciiImg_t * insta_carregaImagem(char url[], bool colorido, int largura) {
+  
+  FILE * arquivo;
+  char buffer[BUFFER_TAMANHO];
+  int nBytes, nBytesTotal = 0;
+  char linhaComando[LINHA_COMANDO];
+
+  asciiImg_t * img;
+  
+  // Aloca espa�o para uma imagem
+  img = malloc(sizeof(asciiImg_t));
+  if (img == NULL) return NULL;
+  
+  // Inicializa a estrutura
+  img->bytes = NULL;
+  img->nBytes = 0;
+  
+  // Monta a linha de comando
+  (void)sprintf(linhaComando, "%s %s %s -W %d -c > %s", FERRAMENTA_IMAGEM, url, (colorido ? "-C" : ""), largura, ARQUIVO_IMAGEM_TMP);
+  
+  // Chama o programa para fazer o download da imagem
+  (void)system(linhaComando);
+
+  // Tenta abrir o arquivo recem criado
+  arquivo = fopen(ARQUIVO_IMAGEM_TMP, "r");
+  if (arquivo != NULL) {
+    
+    while(!feof(arquivo)) {
+      
+      // Limpa a linha
+      (void)memset(buffer, 0, sizeof(buffer));
+      
+      // Tenta ler uma linha
+      if (fgets(buffer, BUFFER_TAMANHO, arquivo) == NULL) continue;
+      
+      // Descobre o n�mero de bytes da linha
+      for(nBytes = 0; buffer[nBytes] != 0; nBytes++);
+      
+      // Aloca o espa�o
+      img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + nBytes));
+      
+      // Copia para o espa�o alocado
+      (void)memcpy(&(img->bytes[nBytesTotal]), buffer, nBytes);
+      nBytesTotal+=nBytes;
+    }
+
+    // Finaliza a imagem colocando o \0 final e o tamanho
+    img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + 1));
+    img->bytes[nBytesTotal++] = '\0';
+    img->nBytes = nBytesTotal;
+    
+    // Fecha o arquivo
+    fclose(arquivo);
+  }
+  
+  // Verifica se a imagem é válida
+  if (img->nBytes < LIMIAR_INFERIOR_TAMANHO_IMAGEM) {
+    // Libera todo o espaço alocado
+    free(img->bytes);
+    free(img);
+    
+    return NULL;
+  }
+  
+  // Retorna a imagem carregada
+  return img;
+}
+
+/**
+ *  \brief Fun��o que imprime uma Imagem ASCII.
+ *  
+ *  \param [in] img Endere�o da estrutura com os dados da imagem.
+ */
+void insta_imprimeImagem(asciiImg_t * img) {
+  printf("%s", img->bytes);
+}
+
+/**
+ *  \brief Fun��o que libera a mem�ria alocada por uma imagem.
+ *  
+ *  \param [in] img Endere�o da estrutura com os dados da imagem a ser liberada.
+ */
+void insta_liberaImagem(asciiImg_t * img) {
+  free(img->bytes);
+  free(img);
+}
+
+/*  =========================================================  */
+/*  ================= Código do Free Market =================  */
+/*  =========================================================  */
 
 
 typedef struct avaliacao_s {
@@ -57,7 +191,7 @@ typedef struct produto_s { //obs: a chave é do lado do nome! nao é! é sim!
     int Id;
     char idDono[MAX_CHAR_ID];
     int nImagens;
-    char * imagens;
+    char imagens[MAX_IMAGENS][MAX_LINK];
     
     int estoque;
     int nAvaliacoes;
@@ -108,16 +242,36 @@ int escolherProdutoComId(usuario_t usuario)
 {
     if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 
-    int idDigitado;
+    int idDigitado, i, j;
+    produto_t produtoAtual;
+    asciiImg_t * img;
 
     //Faz um loop e imprime todos os usuarios pra voce selecionar
     //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
 
-    printf("ID\t| Nome\n");
-
+    printf("Produtos: \n\n");
     // Loop em todos os produtos do usuário e printa o id e o nome do produto
-    for(int i = 0; i < usuario.nProdutos; i++) {
-        printf("%02d\t  %s\n", usuario.produtos[i].Id, usuario.produtos[i].nomeProduto);
+    for(i = 0; i < usuario.nProdutos; i++) {
+
+        // Seta o produto atual como o produto sendo printado agora
+        produtoAtual = usuario.produtos[i];
+
+        // Se houver imagens do produto
+        if (produtoAtual.nImagens > 0) {
+            printf("Imagens do produto:\n");
+            // Loop nas imagens & printa cada imagem
+
+            for (j = 0; j < produtoAtual.nImagens; j++){
+
+                // Printa o título e a imagem & libera a memória
+                img = insta_carregaImagem(produtoAtual.imagens[j], IMAGENS_COLORIDAS, IMAGEM_PRODUTO_NUMERO_COLUNAS);
+                printf("Imagem %i/%i:\n", j+1, produtoAtual.nImagens);
+
+                insta_liberaImagem(img);
+            }  
+        }
+
+        printf("Nome do produto: %s\nID do produto: %i\n\n", produtoAtual.nomeProduto, produtoAtual.Id);
     }
 
     // Pede o id
@@ -139,6 +293,7 @@ int escolherProdutoComId(usuario_t usuario)
 
 
 // Função para listar os produtos de um usuário, e escolher um produto, retornando seu indice
+/// NÃO UTILIZAR!
 int escolherProduto(usuario_t usuario)
 {
     if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
@@ -278,39 +433,71 @@ void apagarProduto(usuario_t * usuario) {
 // Cadastra um produto novo em um usuário
 void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos) { 
 
-    //Se não estiver aloca, aloca
+    //Se não estiver alocado(o usuário não tem nenhum produto), aloca
     if (usuario->produtos == NULL) {
+        
         usuario->produtos = malloc(sizeof(produto_t));
         if (usuario->produtos == NULL) {
             perror("Nao foi possivel alocar o vetor PRODUTOS");
             return;
         }
-//Verifica novamente se alocou, caso positivo, realoca. Caso negativo, aloca e entra na condição positiva
+
     } else if ((usuario->produtos = realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos + 1))) == NULL) {
+        //Verifica novamente se alocou, caso positivo, realoca. Caso negativo, aloca e entra na condição positiva
         return;
     }
 
+    produto_t produtoCriado; // Produto sendo cadastrado
+    char tempLink[MAX_LINK];
+    int i;
+
+    produtoCriado.nAvaliacoes = 0;
+    produtoCriado.avaliacoes = NULL;
+
     // Pede o nome do produto
-    printf("Nome produto: ");
-    fgets(usuario->produtos[usuario->nProdutos].nomeProduto, MAX_CHAR_NOME_PRODUTO, stdin);
-    removeQuebra(usuario->produtos[usuario->nProdutos].nomeProduto);
+    printf("Nome do produto: ");
+    fgets(produtoCriado.nomeProduto, MAX_CHAR_NOME_PRODUTO, stdin);
+    removeQuebra(produtoCriado.nomeProduto);
 
     // Pede a descrição do produto
-    printf("Descricao produto: ");
-    fgets(usuario->produtos[usuario->nProdutos].descricaoProduto, MAX_CHAR_DESCRICAO, stdin);
-    removeQuebra(usuario->produtos[usuario->nProdutos].descricaoProduto);
+    printf("Descricao do produto: ");
+    fgets(produtoCriado.descricaoProduto, MAX_CHAR_DESCRICAO, stdin);
+    removeQuebra(produtoCriado.descricaoProduto);
     
-    //Imagens fica pra dps
+    // Pede as imagens do produto
+    printf("Quantas imagens deseja colocar? ");
+    scanf("%i%*c", &produtoCriado.nImagens);
+
+    // Se o usuário for colocar imagens (nImagens > 0)
+    if (produtoCriado.nImagens > 0) {
+
+        // Caso o usuário queira postar a galeria de google fotos dele
+        if (produtoCriado.nImagens > MAX_IMAGENS) {
+            printf("O maximo de imagens eh %i. O numero de\nimagens agora eh %i.", MAX_IMAGENS, MAX_IMAGENS);
+            produtoCriado.nImagens = MAX_IMAGENS;
+        }
+
+        // Loop em todos os elementos do vetor "imagens"
+        for (i = 0; i < produtoCriado.nImagens; i++) {
+            // Pede o link da imagem
+            printf("Digite o link da %ia imagem: ", i+1);
+            fgets(tempLink, MAX_LINK, stdin);
+
+            // Salva o link digitado
+            strcpy(produtoCriado.imagens[i], tempLink);
+        }
+
+    }
 
     // Pede o estoque do produto
-    printf("Estoque produto: ");
-    scanf("%d%*c", &usuario->produtos[usuario->nProdutos].estoque);
+    printf("Estoque do produto: ");
+    scanf("%d%*c", &produtoCriado.estoque);
 
     // Coloca o ID do produto como a quantidade de produtos já criados
-    usuario->produtos[usuario->nProdutos].Id = *nProdutos;
+    produtoCriado.Id = *nProdutos;
     
     // Coloca o ID do dono do produto como o usuário logado agora
-    strcpy(usuario->produtos[usuario->nProdutos].idDono, usuario->ID);
+    strcpy(produtoCriado.idDono, usuario->ID);
 
     // Aloca para o novo produto & Seta para o produto que acabou de criar
     *PRODUTOS = realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1));
@@ -320,11 +507,9 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
         printf("Falha na criacao do produto.\n");
         return;
     }
-    
-    usuario->produtos[usuario->nProdutos].nAvaliacoes = 0;
-    usuario->produtos[usuario->nProdutos].avaliacoes = NULL;
-    
-    (*PRODUTOS)[*nProdutos] = usuario->produtos[usuario->nProdutos];
+
+    usuario->produtos[usuario->nProdutos] = produtoCriado;
+    (*PRODUTOS)[*nProdutos] = produtoCriado;
 
     // Implementa a quantidade de produtos do usuário e de produtos totais
     (usuario->nProdutos)++;
@@ -786,9 +971,9 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 
         // Printa as ações & pergunta o que o usuário quer (menos dar o oríficio)
         printf("\n\tCadastro\n\n1 - Criar uma nova conta\n2 - Fazer login em outra conta\n3 - Sair da conta");
-        printf("\n\n\tProduto\n\n4 - Cadastrar produto\n5 - Editar produto\n6 - Excluir produto\n7 - Comprar produto\n8 - Avaliar produto");
-        printf("\n9 - Listar avaliacoes de um Produto\n10 - Favoritar um produto\n11 - Desfavoritar um produto\n12 - Listar os favoritos do usuario");
-        printf("\n\n\tGerais\n\n13 - Buscar usuario\n14 - Listar produtos\n0 - Sair do programa\n\n");
+        printf("\n\n\tProduto\n\n4  - Cadastrar produto\n5  - Editar produto\n6  - Excluir produto\n7  - Comprar produto\n8  - Avaliar produto");
+        printf("\n9  - Listar avaliacoes de um Produto\n10 - Favoritar um produto\n11 - Desfavoritar um produto\n12 - Listar os favoritos do usuario");
+        printf("\n\n\tGerais\n\n13 - Buscar usuario\n14 - Listar produtos\n0  - Sair do programa\n\n");
 
         // Loop até o usuário digitar algo válido
         do {
