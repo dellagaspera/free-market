@@ -15,7 +15,7 @@
 #define MAX_LINK                (200 + 1)
 #define MAX_CHAR_NOME_PRODUTO   (40 + 1)
 #define MAX_CHAR_DESCRICAO      (128 + 1)
-#define MAX_IMAGENS              10
+#define MAX_IMAGENS              70
 
 #define USUARIO_SEM_LOGIN -1
 
