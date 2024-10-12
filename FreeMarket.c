@@ -20,7 +20,7 @@
 #define NAO 0
 
 #define MENU_PRI_OPCAO_MIN 0    // Opção mínima que o usuário pode escolher no menu principal
-#define MENU_PRI_OPCAO_MAX 13   // Opção máxima que o usuário pode escolher no menu principal
+#define MENU_PRI_OPCAO_MAX 14   // Opção máxima que o usuário pode escolher no menu principal
 
 // Arquivos
 #define ARQUIVO_USUARIOS "usuarios_freemarket"
@@ -146,13 +146,14 @@ int escolherProduto(usuario_t usuario)
     //Faz um loop e imprime todos os usuarios pra voce selecionar
     //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
 
+    printf("ID\t| Nome\n");
     for(int i = 0; i < usuario.nProdutos; i++) {
 
-        printf("%d - %s\n", (i+1), usuario.produtos[i].nomeProduto);//Muda esse %d dps pra %s, ai vai ser o id seguido do nome, assim-> id - nome
+        printf("%02d\t  %s\n", i, usuario.produtos[i].nomeProduto);//Muda esse %d dps pra %s, ai vai ser o id seguido do nome, assim-> id - nome
     }
 
     char tempVar[MAX_CHAR_ID];
-    printf("Digite o nome do produto(vai ser id dps tropa):");
+    printf("Digite o id do produto:");
     fgets(tempVar, MAX_CHAR_ID, stdin);
     removeQuebra(tempVar);
 
@@ -216,46 +217,46 @@ void listarProdutos(usuario_t *usuario, int nUsuarios) {
     esperar_apertarEnter();
 }
 
-void compraProduto(usuario_t *usuario, int nUsuarios) {   
-    int indiceProduto = buscaUsuario(usuario, nUsuarios); // TROCAR DEPOIS PARA PASSAR O PRODUTO DESEJADO
+void compraProduto(usuario_t *usuario, int nUsuarios) {
+
+    int indiceUsuario = buscaUsuario(usuario, nUsuarios);
+    int indiceProduto = escolherProdutoComId(*usuario);
+
     int nUnidades;
 
-    if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
-    {
+    if (indiceUsuario == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
         return;
     }
-    if(usuario->produtos[indiceProduto].estoque <= 0) {
-        //Verifica no indice informado se o produto ja foi comprado
+
+    if (usuario[indiceUsuario].produtos[indiceProduto].estoque <= 0) {
         printf("PRODUTO SEM ESTOQUE\n");
         return;
-    } else printf("ESTOQUE PRODUTO: %d", usuario->produtos[indiceProduto].estoque);
-    
-    do
-    {
+    } else {
+        printf("ESTOQUE PRODUTO: %d\n", usuario[indiceUsuario].produtos[indiceProduto].estoque);
+    }
+
+    do {
         printf("Numero de unidades: ");
         scanf("%d%*c", &nUnidades);
 
-        if(nUnidades <= usuario->produtos[indiceProduto].estoque) 
-        {
-            usuario->produtos[indiceProduto].estoque -= nUnidades;
+        if (nUnidades <= usuario[indiceUsuario].produtos[indiceProduto].estoque) {
+            usuario[indiceUsuario].produtos[indiceProduto].estoque -= nUnidades;
             printf("PRODUTO COMPRADO COM SUCESSO\n");
             return;
-        } 
-        else
-        {
+        } else {
             printf("NAO HA UNIDADES SUFICIENTES\n");
             printf("1 - Tentar novamente\n");
-            printf("0 - Voltar\n : ");
+            printf("0 - Voltar\n: ");
             int escolha;
             scanf("%d%*c", &escolha);
-            if(escolha == 0) return;
+            if (escolha == 0) return;
         }
-    } while(usuario->produtos[indiceProduto].estoque);
-    
+    } while (usuario[indiceUsuario].produtos[indiceProduto].estoque);
     
     esperar_apertarEnter();
 }
+
 
 void apagarProduto(usuario_t * usuario) {
     int indiceProduto = escolherProduto(* usuario);
@@ -281,6 +282,7 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
     if (usuario->produtos == NULL) {
         usuario->produtos = malloc(sizeof(produto_t));
         if (usuario->produtos == NULL) {
+            perror("Nao foi possivel alocar o vetor PRODUTOS");
             return;
         }
 //Verifica novamente se alocou, caso positivo, realoca. Caso negativo, aloca e entra na condição positiva
@@ -306,16 +308,23 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
 
     // Coloca o ID do produto como a quantidade de produtos já criados
     usuario->produtos[usuario->nProdutos].Id = *nProdutos;
+    
+    // Coloca o ID do dono do produto como o usuário logado agora
+    strcpy(usuario->produtos[usuario->nProdutos].idDono, usuario->ID);
 
     // Aloca para o novo produto & Seta para o produto que acabou de criar
-    if ((*PRODUTOS = realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1))) == NULL) {
+    *PRODUTOS = realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos + 1));
+    
+    if ((*PRODUTOS) == NULL) {
+        perror("Nao foi possivel realocar o vetor PRODUTOS");
+        printf("Falha na criacao do produto.\n");
         return;
     }
     
-    (*PRODUTOS)[*nProdutos] = usuario->produtos[usuario->nProdutos];
-
-    usuario->produtos[usuario->nProdutos].nAvaliacoes = 0; //
+    usuario->produtos[usuario->nProdutos].nAvaliacoes = 0;
     usuario->produtos[usuario->nProdutos].avaliacoes = NULL;
+    
+    (*PRODUTOS)[*nProdutos] = usuario->produtos[usuario->nProdutos];
 
     // Implementa a quantidade de produtos do usuário e de produtos totais
     (usuario->nProdutos)++;
@@ -342,6 +351,18 @@ int validaEmail(char email[])
     return NAO;
 }
 
+// Busca um usuário cujo ID (usuario.ID) seja igual ao "id" enviado e retorna o seu índice.
+int buscarUsuarioPorId(usuario_t *usuarios, int nUsuarios, char Id[MAX_CHAR_ID]) 
+{
+    // Loop por todos os usuários
+    for(int i = 0; i < nUsuarios; i++) 
+    {
+        if(strcmp(usuarios[i].ID, Id) == 0) return i; // Se o ID do usuário for igual ao ID procurado, retorna.
+    }
+
+    // Se não achou nenhum com tal id
+    return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+}
 
 
 // Retorna o índice de um usuário com o email "_email"
@@ -587,12 +608,12 @@ void editarProduto(usuario_t *usuario) {
 }
 
 //Função para fazer avaliação de um produto
-void fazerAvaliacao(usuario_t *usuarios, int nUsuarios) {
+void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
 
     
     int indiceUsuario = buscaUsuario(usuarios, nUsuarios);
        
-    int indiceProduto = escolherProduto(usuarios[indiceUsuario]);
+    int indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
 
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");            
@@ -611,17 +632,20 @@ void fazerAvaliacao(usuario_t *usuarios, int nUsuarios) {
     fgets(avaliaTemp, MAX_CHAR_DESCRICAO, stdin);
     removeQuebra(avaliaTemp);
     
-    printf("Digite a nota: ");
+    printf("Digite uma nota inteira entre 0 e 5: ");
     scanf("%d%*c", &nota);
-
 
     if (nota < 0 || nota > 5) {
         printf("Nota invalida. Deve ser entre 0 e 5.\n");
         return;
     }
 
+    // Seta os valores da avaliação
+    strcpy(produtoAtual->avaliacoes[produtoAtual->nAvaliacoes].autorMensagem, usuarios[loginAtual].nome);
+    strcpy(produtoAtual->avaliacoes[produtoAtual->nAvaliacoes].autorMensagemID, usuarios[loginAtual].ID);
     produtoAtual->avaliacoes[produtoAtual->nAvaliacoes].nota = nota;
     strcpy(produtoAtual->avaliacoes[produtoAtual->nAvaliacoes].mensagem, avaliaTemp);
+
     produtoAtual->nAvaliacoes++;
 }
 
@@ -635,7 +659,7 @@ void listarAvaliacoes(usuario_t *usuarios, int nUsuarios) {
         return;
     }
 
-    int indiceProduto = escolherProduto(usuarios[indiceUsuario]);
+    int indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
     if (indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("Produto nao encontrado.\n");
         return;
@@ -650,10 +674,9 @@ void listarAvaliacoes(usuario_t *usuarios, int nUsuarios) {
     }
 
     
-    printf("Avaliacoes para o produto %s:\n", produto.nomeProduto);
+    printf("\nAvaliacoes para o produto %s:\n\n", produto.nomeProduto);
     for (int i = 0; i < produto.nAvaliacoes; i++) {
-        printf("Nota %d\n ",produto.avaliacoes[i].nota);
-        printf("Avaliação: %s\n", produto.avaliacoes[i].mensagem);
+        printf("De: %s\nNota: %i/5\nAvaliacao: %s\n\n", produto.avaliacoes[i].autorMensagem, produto.avaliacoes[i].nota, produto.avaliacoes[i].mensagem);
     }
     
     esperar_apertarEnter();
@@ -692,20 +715,28 @@ erro_t favoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) 
     //voltei
     
     // Aloca & Coloca o produto escolhido no vetor "produtosFavoritados" do usuário atual
-    usuarioAtual->produtosFavoritos = (int *)realloc(usuarioAtual->produtosFavoritos, (usuarioAtual->nFavoritos + 1) * sizeof(int));
+    int *novoFavoritos = realloc(usuarioAtual->produtosFavoritos, (usuarioAtual->nFavoritos + 1) * sizeof(int));
+    //Cria uma variável temporária para realocar o tamanho de produtosFavoritos, evitando erros de realocação em uma posição inexistente
+
+    if (novoFavoritos == NULL) {
+        printf("Erro ao alocar memória para produtos favoritos.\n");
+        return 1; // Defina um erro apropriado
+    }
+
+    usuarioAtual->produtosFavoritos = novoFavoritos;//produtosFavoritos recebe a realocação de novosFavoritos
+
     usuarioAtual->produtosFavoritos[usuarioAtual->nFavoritos] = usuarios[indiceUsuario].produtos[indiceProduto].Id;
     usuarioAtual->nFavoritos++;
-    printf("Produto %s favoritado com sucesso!", usuarios[indiceUsuario].produtos[indiceProduto].nomeProduto);
+    printf("Produto %s favoritado com sucesso!\n", usuarios[indiceUsuario].produtos[indiceProduto].nomeProduto);
 
     esperar_apertarEnter();
-
 }
 
-void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProdutos) {
+void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProdutos, usuario_t * USUARIOS, int nUsuarios) {
 
-    int i;
+    int i, idUsuarioDono;
     produto_t produtoAtual;
-
+ 
     // Obtem o vetor que salva os id's dos produtos & o tamanho do vetor
     int * indicesProdutosFavoritos = usuario.produtosFavoritos;
 
@@ -721,9 +752,16 @@ void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProd
         // Obtem o produto com o id "indicesProdutosFavoritos[i]"
         produtoAtual = PRODUTOS[indicesProdutosFavoritos[i]];
 
-        // Printa as informações do produto
-        printf("%-13i   %-30s   %-30s\n", produtoAtual.Id, produtoAtual.nomeProduto, usuario.nome);
+        // Procura o índice do usuário com id igual ao id do dono do produto
+        idUsuarioDono = buscarUsuarioPorId(USUARIOS, nUsuarios, produtoAtual.idDono);
 
+        // Verifica se a função retornou o código de erro ou um índice
+        if (idUsuarioDono == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
+            continue; // Pula esse produto
+        }
+
+        // Printa as informações do produto
+        printf("%-13i   %-30s   %-30s\n", produtoAtual.Id, produtoAtual.nomeProduto, USUARIOS[idUsuarioDono].nome);
     }
 
     // Espera pro usuário poder ver as coisas
@@ -740,7 +778,7 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 
     printf("\n\n"); // Para dar um espaço
     
-    // Verifica se está ou não com login
+    // Verifica se está ou não com login    
     if(loginAtual == USUARIO_SEM_LOGIN) printf("Voce esta com acesso limitado!\nFaca login para ter acesso a todas as funcoes.\n");
 
     // Se o usuário estiver logado
@@ -749,14 +787,13 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
         // Printa as ações & pergunta o que o usuário quer (menos dar o oríficio)
         printf("\n\tCadastro\n\n1 - Criar uma nova conta\n2 - Fazer login em outra conta\n3 - Sair da conta");
         printf("\n\n\tProduto\n\n4 - Cadastrar produto\n5 - Editar produto\n6 - Excluir produto\n7 - Comprar produto\n8 - Avaliar produto");
-        printf("\n9 - Listar avaliacoes de um Produto\n10 - Favoritar um produto\n11 - Listar os favoritos do usuario");
-        printf("\n\n\tGerais\n\n12 - Buscar usuario\n13 - Listar produtos\n0 - Sair do programa\n\n");
+        printf("\n9 - Listar avaliacoes de um Produto\n10 - Favoritar um produto\n11 - Desfavoritar um produto\n12 - Listar os favoritos do usuario");
+        printf("\n\n\tGerais\n\n13 - Buscar usuario\n14 - Listar produtos\n0 - Sair do programa\n\n");
 
         // Loop até o usuário digitar algo válido
         do {
             printf("Bem vindo, %s! O que deseja fazer? ", Usuarios[loginAtual].nome);
             scanf("%d%*c", &escolha);
-            if (escolha == 100) { break; };
             
             if (escolha < MENU_PRI_OPCAO_MIN || escolha > MENU_PRI_OPCAO_MAX) {
                 printf("Opcao invalida, tente novamente.\n\n");
@@ -787,6 +824,41 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 
 }
 
+
+erro_t desfavoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) {
+    int indiceUsuario, indiceProduto;
+
+    usuario_t *usuarioAtual = &usuarios[idUsuarioAtual];
+
+    indiceUsuario = buscaUsuario(usuarios, nUsuarios);
+
+    indiceProduto = escolherProduto(usuarios[indiceUsuario]);
+
+    if (indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
+        printf("NAO HA PRODUTOS CADASTRADOS\n");
+        return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+    }
+
+    int produtoId = usuarios[indiceUsuario].produtos[indiceProduto].Id;
+    int encontrado = 0;
+
+    for (int i = 0; i < usuarioAtual->nFavoritos; i++) {
+        //Só entra na condição se o produto selecionado for igual a algum produto do vetor
+        if (usuarioAtual->produtosFavoritos[i] == produtoId) {
+            encontrado = 1;
+
+            // Move ate o tamanho e realoca pra -1, pra deletar
+            for (int j = 0; j < usuarioAtual->nFavoritos - 1; j++) {
+                usuarioAtual->produtosFavoritos[j] = usuarioAtual->produtosFavoritos[j + 1];
+            }
+
+            // Reduz o número de favoritos e realoca a memória
+            usuarioAtual->nFavoritos--;
+            usuarioAtual->produtosFavoritos = (int *)realloc(usuarioAtual->produtosFavoritos, usuarioAtual->nFavoritos * sizeof(int));
+            break;
+        }
+    }
+}
 
 int main(int argc, char ** argv)
 {
@@ -833,11 +905,11 @@ int main(int argc, char ** argv)
             break;
 
         case 7: // Comprar um produto
-            compraProduto(&usuarios[loginAtual], nUsuarios);
+            compraProduto(usuarios, nUsuarios);
             break;
 
         case 8: // Fazer uma avaliação
-            fazerAvaliacao(usuarios, nUsuarios);
+            fazerAvaliacao(usuarios, nUsuarios, loginAtual);
             break;
         
         case 9: // Lista as avaliações de um produto
@@ -845,23 +917,23 @@ int main(int argc, char ** argv)
             break;
 
         case 10: // Favoritar um produto
-
             favoritarProduto(usuarios, nUsuarios, loginAtual);
             break;
 
-        case 11: // Lista os favoritos do usuário
-            listarFavoritosDoUsuario(usuarios[loginAtual], PRODUTOS, nProdutos);
+        case 11: // Desfavoritar
+            desfavoritarProduto(usuarios, nUsuarios, loginAtual);
+            break;
+
+        case 12: // Lista os favoritos do usuário
+            listarFavoritosDoUsuario(usuarios[loginAtual], PRODUTOS, nProdutos, usuarios, nUsuarios);
             break;
         
-        case 12: // Buscar um usuário
+        case 13: // Buscar um usuário
             buscaUsuario(usuarios, nUsuarios);
             break;
         
-        case 13://Lista todos os produtos de um usuário
+        case 14://Lista todos os produtos de um usuário
             listarProdutos(usuarios, nUsuarios);
-            break;
-
-        case 100:
             break;
             
         case 0: // Encerra o programa
