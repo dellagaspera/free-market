@@ -78,11 +78,11 @@ typedef struct usuario_e {
     - nota: Nota média do produto
 */
 typedef struct produto_e {
-    char idVendedor[PRODUTO_CARACTERES_ID];
+    int  estoque;
+    char idVendedor[USUARIO_CARACTERES_ID];
     char id[PRODUTO_CARACTERES_ID];
     char nome[PRODUTO_CARACTERES_NOME];
     char descricao[PRODUTO_CARACTERES_DESCRICAO];
-    int  estoque;
 } produto_t;
 
 /*
@@ -95,7 +95,7 @@ typedef struct produto_e {
 */
 typedef struct avaliacao_e {
     char idAvaliacao[AVALIACAO_CARACTERES_ID];
-    char idProduto[PRODUTO_CARACTERES_ID];
+    char idProduto[PRODUTO_CARACTERES_ID];  
     char idComprador[USUARIO_CARACTERES_ID];
     char mensagem[AVALIACAO_CARACTERES_MENSAGEM];
     int  nota;
@@ -103,9 +103,24 @@ typedef struct avaliacao_e {
 
     //  FUNCOES  //
 
+// Aguarda o usuário digitar enter para facilitar a legibilidade de informações
 void aguardaUsuario() {
     printf("PRESSIONE ENTER PARA CONTINUAR\n");
     scanf("%*c");
+}
+
+// Procura uma string dentro de outra independente de letras maíusculas ou minúsculas
+char * procuraString(char string[], char substring[]) {
+    char str1Auxiliar[strlen(string)];
+    char str2Auxiliar[strlen(substring)];
+
+    strcpy(str1Auxiliar, string);
+    strcpy(str2Auxiliar, substring);
+
+    strupr(str1Auxiliar);
+    strupr(str2Auxiliar);
+
+    return strstr(str1Auxiliar, str2Auxiliar);
 }
 
 // Verifica se existe o e-mail digitado
@@ -134,6 +149,7 @@ bool emailExiste(char email[USUARIO_CARACTERES_EMAIL]) {
     }
 
     // Se chegou aqui, o e-mail não foi cadastrado anteriormente
+    free(usuarios);
     return false;
 }
 
@@ -162,33 +178,35 @@ bool idUsuarioExiste(char id[USUARIO_CARACTERES_ID]) {
         }
     }
 
+    free(usuarios);
     return false;
 }
 // Verifica se existe o ID de usuário digitado
 bool idProdutoExiste(char id[PRODUTO_CARACTERES_ID]) {
-    if(fopen(ARQUIVO_USUARIOS, "rb") == NULL) {
+    if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return false;
     }
-    FILE * arquivoUsuarios = fopen(ARQUIVO_USUARIOS, "rb");
-    usuario_t * usuarios;
-    int nUsuarios;
+    FILE * arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "rb");
+    produto_t * produtos;
+    int nProdutos;
 
-    fread(&nUsuarios, sizeof(int), 1, arquivoUsuarios);
-    usuarios = malloc(sizeof(usuario_t) * nUsuarios);
-    if(nUsuarios > 0) {
-        fread(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
-        fclose(arquivoUsuarios);
+    fread(&nProdutos, sizeof(int), 1, arquivoProdutos);
+    arquivoProdutos = malloc(sizeof(produto_t) * nProdutos);
+    if(nProdutos > 0) {
+        fread(arquivoProdutos, sizeof(produto_t), nProdutos, arquivoProdutos);
+        if(arquivoProdutos == NULL) printf("Erro ao ler dados do arquivo\n");
+        fclose(arquivoProdutos);
     } else return false;
 
     // Passa por todos os usuários, comparando o ID digitado para verificar se o ID já está cadastrado
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(id, usuarios[i].id) == 0) {
+    for(int i = 0; i < nProdutos; i++) {
+        if(strcmp(id, produtos[i].id) == 0) {
             return true;
         }
     }
 
+    free(produtos);
     return false;
 }
 
@@ -305,6 +323,7 @@ int indiceUsuarioPorEmail(char email[USUARIO_CARACTERES_EMAIL]) {
         if(strcmp(email, usuarios[i].email) == 0) return i;
     }
 
+    free(usuarios);
     return ERRO_BUSCA_SEM_RESULTADO;
 }
 
@@ -328,6 +347,7 @@ int indiceUsuarioPorID(char id[USUARIO_CARACTERES_ID]) {
         if(strcmp(id, usuarios[i].id) == 0) return i;
     }
 
+    free(usuarios);
     return ERRO_BUSCA_SEM_RESULTADO;
 }
 
@@ -422,6 +442,7 @@ void cadastraUsuario() {
     fwrite(usuarios, sizeof(usuario_t), nUsuarios, arquivoUsuarios);
     fclose(arquivoUsuarios);
 
+    free(usuarios);
     return;
 }
 
@@ -477,23 +498,19 @@ void cadastraProduto(int loginAtual) {
     }
     fclose(arquivoUsuarios);
 
-    nUsuarios++;
-    usuarios = realloc(usuarios, sizeof(usuario_t) * nUsuarios);
-    if(usuarios == NULL) printf("Erro ao realocar a memoria\n");
-
     if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
         printf("Erro na abertura do arquivo\n");
         return;
     }
     FILE * arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "rb");
-    produto_t * produtos;
+    produto_t * produtos = NULL;
     int nProdutos;
 
     fread(&nProdutos, sizeof(int), 1, arquivoProdutos);
     produtos = malloc(sizeof(produto_t) * nProdutos);
     if(nProdutos > 0) {
         fread(produtos, sizeof(usuario_t), nProdutos, arquivoProdutos);
-        if(usuarios == NULL) printf("Erro ao ler dados do arquivo\n");
+        if(produtos == NULL) printf("Erro ao ler dados do arquivo\n");
     }
     fclose(arquivoProdutos);
 
@@ -501,40 +518,30 @@ void cadastraProduto(int loginAtual) {
     produtos = realloc(produtos, sizeof(produto_t) * nProdutos);
     if(produtos == NULL) printf("Erro ao realocar a memoria\n");
 
-    char idVendedor[USUARIO_CARACTERES_ID];
-    char id[PRODUTO_CARACTERES_ID];
-    char nome[PRODUTO_CARACTERES_NOME];
-    char descricao[PRODUTO_CARACTERES_DESCRICAO];
-    int  estoque;
-
-    strcpy(idVendedor, usuarios[loginAtual].id);
+    strcpy(produtos[nProdutos - 1].idVendedor, usuarios[loginAtual].id);
 
     printf("NOME DO PRODUTO\n");
     printf(" : ");
-    fgets(nome, PRODUTO_CARACTERES_NOME, stdin);
-    removeQuebra(nome);
+    fgets(produtos[nProdutos - 1].nome, PRODUTO_CARACTERES_NOME, stdin);
+    removeQuebra(produtos[nProdutos - 1].nome);
     
     printf("DESCRICAO DO PRODUTO\n");
     printf(" : ");
-    fgets(descricao, PRODUTO_CARACTERES_DESCRICAO, stdin);
-    removeQuebra(descricao);
+    fgets(produtos[nProdutos - 1].descricao, PRODUTO_CARACTERES_DESCRICAO, stdin);
+    removeQuebra(produtos[nProdutos - 1].descricao);
 
     printf("ESTOQUE DO PRODUTO\n");
     printf(" : ");
-    scanf("%d%*c", &estoque);
+    scanf("%d%*c", &(produtos[nProdutos - 1].estoque));
 
-    geraIDProduto(id, nome);
-
-    strcpy(produtos[nProdutos - 1].nome, nome);
-    strcpy(produtos[nProdutos - 1].descricao, descricao);
-    strcpy(produtos[nProdutos - 1].idVendedor, idVendedor);
-    strcpy(produtos[nProdutos - 1].id, id);
-    produtos[nProdutos - 1].estoque = estoque;
+    geraIDProduto(produtos[nProdutos - 1].id, produtos[nProdutos - 1].nome);
 
     arquivoProdutos = fopen(ARQUIVO_PRODUTOS, "wb");
     fwrite(&nProdutos, sizeof(int), 1, arquivoProdutos);
     fwrite(produtos, sizeof(produto_t), nProdutos, arquivoProdutos);
     fclose(arquivoProdutos);
+    free(produtos);
+    free(usuarios);
 
     printf("PRODUTO CADASTRADO COM SUCESSO!\n");
     aguardaUsuario();
@@ -548,7 +555,8 @@ void imprimeProduto(produto_t produto) {
     printf("%-*s\t", USUARIO_CARACTERES_ID, produto.idVendedor);
     printf("%-*d\t", 10,  produto.estoque);
     printf("%-*s\t", PRODUTO_CARACTERES_NOME,  produto.nome);
-    printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO,  produto.descricao);
+    printf("\n");
+    // printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO,  produto.descricao);
 }
 
 // Imprime todos os produtos
@@ -569,18 +577,20 @@ void listaProdutos() {
     }
     fclose(arquivoProdutos);
 
-    printf("Numero de produtos cadastrado: %d\n", nProdutos);
 
+    printf("Numero de produtos cadastrado: %d\n", nProdutos);
     printf("%-*s\t", PRODUTO_CARACTERES_ID, "IDENTIFICADOR");
     printf("%-*s\t", USUARIO_CARACTERES_ID, "VENDEDOR");
     printf("%-*s\t", 10, "ESTOQUE");
     printf("%-*s\t", PRODUTO_CARACTERES_NOME, "NOME");
-    printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO, "DESCRICAO");
+    printf("\n");
+    // printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO, "DESCRICAO");
 
     for(int i = 0; i < nProdutos; i++) {
         imprimeProduto(produtos[i]);
     }
     
+    free(produtos);
     aguardaUsuario();
 }
 
@@ -627,13 +637,14 @@ int buscaProdutos(produto_t ** produtosEncontrados) {
     removeQuebra(busca);
 
     for(int i = 0; i < nProdutos; i++) {
-        if(strstr(produtos[i].nome, busca) != NULL) {
+        if(procuraString(produtos[i].nome, busca) != NULL) {
             nProdutosEncontrados++;
             (* produtosEncontrados) = (produto_t *)realloc((* produtosEncontrados), sizeof(produto_t) * nProdutosEncontrados);
             (* produtosEncontrados)[nProdutosEncontrados - 1] = produtos[i];
         }
     }
 
+    free(produtos);
     return nProdutosEncontrados;
 }
 
@@ -802,6 +813,7 @@ int main(int argc, char ** argv) {
                 produto_t * produtosAchados = NULL;
                 int nProdutosAchados = buscaProdutos(&produtosAchados);
                 imprimeVetorProdutos(produtosAchados, nProdutosAchados);
+                free(produtosAchados);
             }
             break;
 
@@ -813,5 +825,6 @@ int main(int argc, char ** argv) {
 
     } while(escolha != 0);
 
+    free(usuarios);
     return SUCESSO;
 }
