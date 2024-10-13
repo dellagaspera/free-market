@@ -31,7 +31,7 @@
 #define LINHA_COMANDO                   10000           // Tamanho máximo da linha de comando
 #define LIMIAR_INFERIOR_TAMANHO_IMAGEM  500             // Limiar inferior que considera o download com sucesso
 #define IMAGENS_COLORIDAS               true            // Se a imagem é colorida ou não
-#define IMAGEM_PRODUTO_NUMERO_COLUNAS   10              // Número de colunas da imagem
+#define IMAGEM_PRODUTO_NUMERO_COLUNAS   70              // Número de colunas da imagem
 
 // Nome do executável da ferramenta de download e conversão da imagem
 #ifdef __unix__ 
@@ -43,13 +43,13 @@
 #define ARQUIVO_IMAGEM_TMP  "ascii_art.txt" // Nome do arquivo de sa�da tempor�rio da imagem
 
 // Arquivos
-#define ARQUIVO_USUARIOS "usuarios_freemarket"
+//#define ARQUIVO_USUARIOS "usuarios_freemarket"
 
 // Saídas 
 #define SUCESSO 0
 
 #define ERRO_BUSCAR_SEM_CORRESPONDENTE -1
-
+#define SEM_AVALIACOES -1
 
 // bool EMANUEL_RECUPERACAO = true;
 
@@ -85,7 +85,7 @@ asciiImg_t * insta_carregaImagem(char url[], bool colorido, int largura) {
 
   asciiImg_t * img;
   
-  // Aloca espa�o para uma imagem
+  // Aloca espaço para uma imagem
   img = malloc(sizeof(asciiImg_t));
   if (img == NULL) return NULL;
   
@@ -191,7 +191,7 @@ typedef struct produto_s { //obs: a chave é do lado do nome! nao é! é sim!
     int Id;
     char idDono[MAX_CHAR_ID];
     int nImagens;
-    char imagens[MAX_IMAGENS][MAX_LINK];
+    asciiImg_t** imagens;
     
     int estoque;
     int nAvaliacoes;
@@ -244,7 +244,6 @@ int escolherProdutoComId(usuario_t usuario)
 
     int idDigitado, i, j;
     produto_t produtoAtual;
-    asciiImg_t * img;
 
     //Faz um loop e imprime todos os usuarios pra voce selecionar
     //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
@@ -259,19 +258,25 @@ int escolherProdutoComId(usuario_t usuario)
         // Se houver imagens do produto
         if (produtoAtual.nImagens > 0) {
             printf("Imagens do produto:\n");
-            // Loop nas imagens & printa cada imagem
-
+            
+            // Loop no vetor das imagens(vetor de "links") & printa cada imagem
             for (j = 0; j < produtoAtual.nImagens; j++){
 
-                // Printa o título e a imagem & libera a memória
-                img = insta_carregaImagem(produtoAtual.imagens[j], IMAGENS_COLORIDAS, IMAGEM_PRODUTO_NUMERO_COLUNAS);
-                printf("Imagem %i/%i:\n", j+1, produtoAtual.nImagens);
+                // Verifica se a imagem existe
+                if (produtoAtual.imagens[j] != NULL) {
 
-                insta_liberaImagem(img);
+                    // Printa o "título" da imagem
+                    printf("\nImagem %i/%i:\n", j+1, produtoAtual.nImagens);  
+
+                    // Printa a imagem
+                    insta_imprimeImagem(produtoAtual.imagens[j]);  
+                }
+
+                
             }  
         }
 
-        printf("Nome do produto: %s\nID do produto: %i\n\n", produtoAtual.nomeProduto, produtoAtual.Id);
+        printf("Nome do produto: %s\nDescricao do produto: %s\nID do produto: %i\n\n", produtoAtual.nomeProduto, produtoAtual.descricaoProduto, produtoAtual.Id);
     }
 
     // Pede o id
@@ -291,67 +296,92 @@ int escolherProdutoComId(usuario_t usuario)
     return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 }
 
+// Retorna a média das notas do produto
+float mediaNotasProduto(produto_t produto) {
+    
+    int i;
+    float soma;
 
-// Função para listar os produtos de um usuário, e escolher um produto, retornando seu indice
-/// NÃO UTILIZAR!
-int escolherProduto(usuario_t usuario)
-{
-    if(usuario.nProdutos == 0) return ERRO_BUSCAR_SEM_CORRESPONDENTE;
-
-    //Faz um loop e imprime todos os usuarios pra voce selecionar
-    //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
-
-    printf("ID\t| Nome\n");
-    for(int i = 0; i < usuario.nProdutos; i++) {
-
-        printf("%02d\t  %s\n", i, usuario.produtos[i].nomeProduto);//Muda esse %d dps pra %s, ai vai ser o id seguido do nome, assim-> id - nome
+    // Se não houver nenhuma avaliação, retorna -1
+    if (produto.nAvaliacoes <= 0) {
+        return SEM_AVALIACOES;
     }
 
-    char tempVar[MAX_CHAR_ID];
-    printf("Digite o id do produto:");
-    fgets(tempVar, MAX_CHAR_ID, stdin);
-    removeQuebra(tempVar);
+    // Se chegou até aqui, é porque existe pelo menos uma avaliação
+    soma = 0;
 
-    for(int i = 0; i < usuario.nProdutos; i++) {
-
-        if(strcmp(tempVar, usuario.produtos[i].nomeProduto) == 0) {
-            return i;
-        }
+    // Loop em cada avaliação, somando a sua nota
+    for (i = 0; i < produto.nAvaliacoes; i++) {
+        soma += produto.avaliacoes[i].nota;
     }
+
+    // Retorna a média
+    return soma / produto.nAvaliacoes;
 }
 
-int buscaUsuario(usuario_t *usuario, int nUsuarios) {
-    
-    //Faz um loop e imprime todos os usuarios pra voce selecionar;
-    //Depois, faz um loop por todos dnv e vc digita um id e retorna o indice dele
+// Busca um usuário e mostra as informações dele
+int buscaUsuario(usuario_t *usuario, int nUsuarios, bool esperar_enter) {
 
     char tempVar[MAX_CHAR_ID];
+    usuario_t usuarioPesquisado;
+    int i, j;
+    float temp;
 
-    //
-    printf("%-20s| %-30s\n", "ID", "Nome");
-    for(int i = 0; i < nUsuarios; i++) {
-        printf("%-20s  %-30s\n", usuario[i].ID, usuario[i].nome);
+    // Exibe todos os usuários
+    printf("%-31s | %-30s\n", "ID", "Nome");
+    for (i = 0; i < nUsuarios; i++) {
+        printf("%-31s   %s\n", usuario[i].nome, usuario[i].ID);
     }
 
-    // Pede o id que o usuario quer
     printf("Digite o ID do usuario: ");
     fgets(tempVar, MAX_CHAR_ID, stdin);
     removeQuebra(tempVar);
 
-    // Loop em todos os usuários até achar um ID que seja igual ao digitado
-    for(int i = 0; i < nUsuarios; i++) {
-        if(strcmp(tempVar, usuario[i].ID) == 0) {
-            return i;
+    // Busca o usuário pelo ID
+    for (i = 0; i < nUsuarios; i++) {
+
+        if (strcmp(tempVar, usuario[i].ID) == 0) { // Vê se o usuário de índice i é o que está procurando
+
+            usuarioPesquisado = usuario[i]; // Usuário que a pessoa procura é o usuario[i]
+
+            // Printa as informações sobre o usuário
+            printf("Nome do usuario: %s\n", usuarioPesquisado.nome);
+            printf("Id do usuario: %s\n", usuarioPesquisado.ID);
+            printf("Quantidade de produtos cadastrados: %d\nProdutos:\n", usuarioPesquisado.nProdutos);
+
+            // Exibe informações sobre cada produto
+            for (j = 0; j < usuarioPesquisado.nProdutos; j++) {
+
+                // Printa a primeira imagem(se tiver) e as informações sobre o produto
+                if (usuarioPesquisado.produtos[j].nImagens > 0) {
+                    insta_imprimeImagem(usuarioPesquisado.produtos[j].imagens[0]);     
+                }
+                printf("\nNome do Produto: %s\nDescricao: %s\n", usuarioPesquisado.produtos[j].nomeProduto, usuarioPesquisado.produtos[j].descricaoProduto);
+                
+                temp = mediaNotasProduto(usuarioPesquisado.produtos[j]);
+                if (temp >= 0) {
+                    printf("Nota Media do Produto: %1.1f\n", temp);
+                } else {
+                    printf("Nao ha avaliacoes do produto.\n");
+                }
+            }
+
+            if (esperar_enter) {
+                esperar_apertarEnter();
+            }
+
+            return i; // Retorna o índice do usuário encontrado
         }
     }
 
-    // Se não achar um usuário com tal id
-    return ERRO_BUSCAR_SEM_CORRESPONDENTE;
+    printf("Usuário não encontrado.\n");
+    return ERRO_BUSCAR_SEM_CORRESPONDENTE; // Retorna -1 se não encontrar o usuário
 }
 
+// Lista os produtos de um usuário
 void listarProdutos(usuario_t *usuario, int nUsuarios) {
     
-    int indiceUsuario = buscaUsuario(usuario, nUsuarios);
+    int indiceUsuario = buscaUsuario(usuario, nUsuarios, false);
     
     if (indiceUsuario == -1) {
         return; // Retorna se o usuário não foi encontrado
@@ -372,14 +402,15 @@ void listarProdutos(usuario_t *usuario, int nUsuarios) {
     esperar_apertarEnter();
 }
 
+// Compra um produto de um usuário
 void compraProduto(usuario_t *usuario, int nUsuarios) {
 
-    int indiceUsuario = buscaUsuario(usuario, nUsuarios);
+    int indiceUsuario = buscaUsuario(usuario, nUsuarios, false);
     int indiceProduto = escolherProdutoComId(*usuario);
 
     int nUnidades;
 
-    if (indiceUsuario == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
+    if (indiceUsuario == ERRO_BUSCAR_SEM_CORRESPONDENTE && usuario[indiceUsuario].nProdutos <= 0) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
         return;
     }
@@ -412,9 +443,9 @@ void compraProduto(usuario_t *usuario, int nUsuarios) {
     esperar_apertarEnter();
 }
 
-
+// Apaga um produto do usuário
 void apagarProduto(usuario_t * usuario) {
-    int indiceProduto = escolherProduto(* usuario);
+    int indiceProduto = escolherProdutoComId(* usuario);
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
     {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
@@ -430,6 +461,7 @@ void apagarProduto(usuario_t * usuario) {
 
     printf("O PRODUTO FOI REMOVIDO COM SUCESSO\n");
 }
+
 // Cadastra um produto novo em um usuário
 void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos) { 
 
@@ -477,14 +509,30 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
             produtoCriado.nImagens = MAX_IMAGENS;
         }
 
-        // Loop em todos os elementos do vetor "imagens"
-        for (i = 0; i < produtoCriado.nImagens; i++) {
-            // Pede o link da imagem
-            printf("Digite o link da %ia imagem: ", i+1);
-            fgets(tempLink, MAX_LINK, stdin);
+        // Aloca para o vetor de imagens
+        produtoCriado.imagens = (asciiImg_t **) malloc(produtoCriado.nImagens * sizeof(asciiImg_t*));
 
-            // Salva o link digitado
-            strcpy(produtoCriado.imagens[i], tempLink);
+        // Loop em todos os elementos do vetor "imagens"(de 0 até o número de imagens)
+        for (i = 0; i < produtoCriado.nImagens; i++) {
+
+            do { // Até conseguir uma imagem certa
+
+                // Pede o link da imagem
+                printf("Digite o link da %ia imagem: ", i+1);
+                fgets(tempLink, MAX_LINK, stdin);
+                removeQuebra(tempLink);
+
+                // Carrega a imagem e coloca no vetor
+                produtoCriado.imagens[i] = insta_carregaImagem(tempLink, IMAGENS_COLORIDAS, IMAGEM_PRODUTO_NUMERO_COLUNAS);
+                if (produtoCriado.imagens[i] == NULL) {
+                    // Não foi possível carregar a imagem
+                    printf("Nao foi possivel carregar a imagem %d. Tente novamente:\n", i + 1);
+                } else {
+                    break; // Foi possível carregar a imagem
+                }
+
+            } while (produtoCriado.imagens[i] == NULL);
+
         }
 
     }
@@ -516,6 +564,7 @@ void cadastraProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos
     (*nProdutos)++;
 }
 
+// Valida um email (se tem @ e . depois do @)
 int validaEmail(char email[])
 {
     int tamanho = strlen(email);
@@ -549,7 +598,6 @@ int buscarUsuarioPorId(usuario_t *usuarios, int nUsuarios, char Id[MAX_CHAR_ID])
     return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 }
 
-
 // Retorna o índice de um usuário com o email "_email"
 int buscarUsuarioPorEmail(usuario_t *usuarios, int nUsuarios, char _email[MAX_CHAR_EMAIL]) 
 {
@@ -561,7 +609,7 @@ int buscarUsuarioPorEmail(usuario_t *usuarios, int nUsuarios, char _email[MAX_CH
     return ERRO_BUSCAR_SEM_CORRESPONDENTE;
 }
 
-
+// Verifica se um ID já existe
 int verificaID(char ID_[], int nUsuarios, usuario_t *usuario) {
 
     for(int i = 0; i < nUsuarios; i++) {
@@ -683,14 +731,21 @@ void listaUsuarios(usuario_t * usuarios, int nUsuarios)
     }
 }
 
-void editarImagemProduto(produto_t * produto) {
-
+// Libera a memória ocupada pelas imagens de um produto
+void liberaImagensProduto(produto_t * produto) {
+    for (int i = 0; i < produto->nImagens; i++) {
+        if (produto->imagens[i] != NULL) {
+            insta_liberaImagem(produto->imagens[i]);
+        }
+    }
+    free(produto->imagens);
 }
 
+// Edita um produto do usuário escolhido
 void editarProduto(usuario_t *usuario) {
     
     // indice do produto selecionado pelo usuário
-    int indiceProduto = escolherProduto(* usuario);
+    int indiceProduto = escolherProdutoComId(* usuario);
 
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
     {
@@ -698,10 +753,13 @@ void editarProduto(usuario_t *usuario) {
         return;
     }
 
+    
     int escolha; // o que a pessoa escolheu editar
     int temp_val = -1;
+    int i;
     char temp_sinal;
-    
+    char tempLink[MAX_LINK];
+
     produto_t * _produto = &usuario->produtos[indiceProduto];
     // endereço do produto
 
@@ -740,7 +798,45 @@ void editarProduto(usuario_t *usuario) {
                 break;
 
             case 3: // Imagem
-                editarImagemProduto(_produto);
+
+                // Libera as imagens do produto
+                liberaImagensProduto(_produto);
+
+                // Pede a nova quantidade de imagens
+                printf("Quantas imagens deseja colocar? ");
+                scanf("%i%*c", &_produto->nImagens);
+                
+                // Caso o usuário queira postar a galeria de google fotos dele :D
+                if (_produto->nImagens > MAX_IMAGENS) {
+                    printf("O maximo de imagens eh %i. O numero de\nimagens agora eh %i.", MAX_IMAGENS, MAX_IMAGENS);
+                    _produto->nImagens = MAX_IMAGENS;
+                }
+
+                // Se o usuário queria editar/colocar pelo menos uma imagem
+                if (_produto->nImagens > 0) {
+
+                    // Aloca para o vetor de imagens
+                    _produto->imagens = (asciiImg_t **) malloc(_produto->nImagens * sizeof(asciiImg_t*));
+
+                    // Loop em todos os elementos do vetor "imagens"(de 0 até o número de imagens)
+                    for (i = 0; i < _produto->nImagens; i++) {
+
+                        // Pede o link da imagem
+                        printf("Digite o link da %ia imagem: ", i+1);
+                        fgets(tempLink, MAX_LINK, stdin);
+                        removeQuebra(tempLink);
+
+                        // Carrega a imagem e coloca no vetor
+                        _produto->imagens[i] = insta_carregaImagem(tempLink, IMAGENS_COLORIDAS, IMAGEM_PRODUTO_NUMERO_COLUNAS);
+                    }
+
+                    } else { // Libera todas as imagens já que o usuário quer 0 fotos(ou negativo)
+                        liberaImagensProduto(_produto);
+                    }
+
+                
+
+                printf("IMAGENS EDITADAS COM SUCESSO\n");
             
                 break;
 
@@ -796,7 +892,7 @@ void editarProduto(usuario_t *usuario) {
 void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
 
     
-    int indiceUsuario = buscaUsuario(usuarios, nUsuarios);
+    int indiceUsuario = buscaUsuario(usuarios, nUsuarios, false);
        
     int indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
 
@@ -837,7 +933,7 @@ void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
 // Função para listar as avaliações de um produto
 void listarAvaliacoes(usuario_t *usuarios, int nUsuarios) {
 
-    int indiceUsuario = buscaUsuario(usuarios, nUsuarios);
+    int indiceUsuario = buscaUsuario(usuarios, nUsuarios, false);
     
     if (indiceUsuario == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("Usuario nao encontrado.\n");
@@ -874,7 +970,7 @@ erro_t favoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) 
     usuario_t * usuarioAtual = &usuarios[idUsuarioAtual];
 
     // Pede para escolher um usuário
-    indiceUsuario = buscaUsuario(usuarios, nUsuarios);
+    indiceUsuario = buscaUsuario(usuarios, nUsuarios, false);
 
     printf("\n"); // Estética
 
@@ -917,6 +1013,7 @@ erro_t favoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) 
     esperar_apertarEnter();
 }
 
+// Lista os produtos favoritados do usuário atual
 void listarFavoritosDoUsuario(usuario_t usuario, produto_t * PRODUTOS, int nProdutos, usuario_t * USUARIOS, int nUsuarios) {
 
     int i, idUsuarioDono;
@@ -1009,15 +1106,15 @@ int telaInicial(usuario_t * Usuarios, int loginAtual) {
 
 }
 
-
+// Desfavorita um produto do usuário atual
 erro_t desfavoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtual) {
     int indiceUsuario, indiceProduto;
 
     usuario_t *usuarioAtual = &usuarios[idUsuarioAtual];
 
-    indiceUsuario = buscaUsuario(usuarios, nUsuarios);
+    indiceUsuario = buscaUsuario(usuarios, nUsuarios, false);
 
-    indiceProduto = escolherProduto(usuarios[indiceUsuario]);
+    indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
 
     if (indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
@@ -1114,7 +1211,7 @@ int main(int argc, char ** argv)
             break;
         
         case 13: // Buscar um usuário
-            buscaUsuario(usuarios, nUsuarios);
+            buscaUsuario(usuarios, nUsuarios, true);
             break;
         
         case 14://Lista todos os produtos de um usuário
