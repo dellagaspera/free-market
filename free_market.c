@@ -109,6 +109,13 @@ void aguardaUsuario() {
     scanf("%*c");
 }
 
+// Converte todas as letras minúsculas de uma string para maiúsculas
+void converteMaiuscula(char * string) {
+    for(int i = 0; i < strlen(string); i++) {
+        if(string[i] >= 'a' && string[i] <= 'z') string[i] = (string[i] - 32);
+    }
+}
+
 // Procura uma string dentro de outra independente de letras maíusculas ou minúsculas
 char * procuraString(char string[], char substring[]) {
     char str1Auxiliar[strlen(string)];
@@ -117,8 +124,8 @@ char * procuraString(char string[], char substring[]) {
     strcpy(str1Auxiliar, string);
     strcpy(str2Auxiliar, substring);
 
-    strupr(str1Auxiliar);
-    strupr(str2Auxiliar);
+    converteMaiuscula(str1Auxiliar);
+    converteMaiuscula(str2Auxiliar);
 
     return strstr(str1Auxiliar, str2Auxiliar);
 }
@@ -610,6 +617,28 @@ void imprimeVetorProdutos(produto_t * produtos, int nProdutos) {
     }
 }
 
+int escolheProduto(produto_t * produtos, int nProdutos) {
+    int escolha;
+    
+    printf("%-5c\t", ' ');
+    printf("%-*s\t", PRODUTO_CARACTERES_ID, "IDENTIFICADOR");
+    printf("%-*s\t", USUARIO_CARACTERES_ID, "VENDEDOR");
+    printf("%-*s\t", 10, "ESTOQUE");
+    printf("%-*s\t", PRODUTO_CARACTERES_NOME, "NOME");
+    printf("%-*s\n", PRODUTO_CARACTERES_DESCRICAO, "DESCRICAO");
+    printf("\n");
+
+    for(int i = 0; i < nProdutos; i++) {
+        printf("%-5d\t", i + 1);
+        imprimeProduto(produtos[i]);
+    }
+    printf(" : ");
+    scanf("%d%*c", &escolha);
+    escolha--;
+    if(escolha < 0 || escolha >= nProdutos) return ERRO;
+    return escolha;
+}
+
 // Busca produtos com base no nome e retorna o numero de produtos encontrados
 int buscaProdutos(produto_t ** produtosEncontrados) {
     if(fopen(ARQUIVO_PRODUTOS, "rb") == NULL) {
@@ -812,7 +841,7 @@ int main(int argc, char ** argv) {
             {
                 produto_t * produtosAchados = NULL;
                 int nProdutosAchados = buscaProdutos(&produtosAchados);
-                imprimeVetorProdutos(produtosAchados, nProdutosAchados);
+                escolheProduto(produtosAchados, nProdutosAchados);
                 free(produtosAchados);
             }
             break;
