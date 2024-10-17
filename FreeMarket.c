@@ -926,12 +926,14 @@ void editarProduto(usuario_t *usuario, produto_t * PRODUTOS, int nProdutos) {
 }
 
 //Função para fazer avaliação de um produto
-void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
+void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, produto_t * PRODUTOS, int nProdutos, int loginAtual) {
 
     
     int indiceUsuario = buscaUsuario(usuarios, nUsuarios, false);
-       
     int indiceProduto = escolherProdutoComId(usuarios[indiceUsuario]);
+
+    int nota, i;
+    char avaliaTemp[MAX_CHAR_DESCRICAO];
 
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");            
@@ -941,10 +943,6 @@ void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
     produto_t * produtoAtual = &(usuarios[indiceUsuario].produtos[indiceProduto]);
     
     produtoAtual->avaliacoes = (avaliacao_t *)realloc(produtoAtual->avaliacoes, sizeof(avaliacao_t) * (produtoAtual->nAvaliacoes + 1));
-    
-        
-    int nota=0;
-    char avaliaTemp[MAX_CHAR_DESCRICAO];
    
     printf("Avalie o produto com as suas palavras: ");
     fgets(avaliaTemp, MAX_CHAR_DESCRICAO, stdin);
@@ -965,6 +963,13 @@ void fazerAvaliacao(usuario_t *usuarios, int nUsuarios, int loginAtual) {
     strcpy(produtoAtual->avaliacoes[produtoAtual->nAvaliacoes].mensagem, avaliaTemp);
 
     produtoAtual->nAvaliacoes++;
+
+    for (i = 0; i < nProdutos; i++) {
+        if (PRODUTOS[i].Id == produtoAtual->Id) {   // Se os ID's forem iguais
+            PRODUTOS[i] = *produtoAtual;            // O "produto" do vetor total agora é o mesmo do usuário
+            break;
+        }
+    }
 }
 
 // Função para listar as avaliações de um produto
@@ -1208,7 +1213,9 @@ erro_t salvarInformacoesArquivo(usuario_t * USUARIOS, int nUsuarios, produto_t *
     // Faz um loop por todos os usuários, salvando seus favoritos
     for (i = 0; i < nUsuarios; i++) {
         fwrite(&(USUARIOS[i].nFavoritos), sizeof(int), 1, arquivo); // Salva a quantidade de favoritos
-        fwrite(USUARIOS[i].produtosFavoritos, sizeof(int), USUARIOS[i].nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"
+        if (USUARIOS[i].nFavoritos > 0) { // Se há favoritos, salva eles
+            fwrite(USUARIOS[i].produtosFavoritos, sizeof(int), USUARIOS[i].nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"    
+        }
     }
 
     // Fecha o arquivo
@@ -1231,23 +1238,26 @@ erro_t salvarInformacoesArquivo(usuario_t * USUARIOS, int nUsuarios, produto_t *
     // Faz um loop por todos os produtos, salvando suas avaliações & imagens
     for (i = 0; i < nProdutos; i++) {
         fwrite(&(PRODUTOS[i].nAvaliacoes), sizeof(int), 1, arquivo); // Salva a quantidade de avaliacoes
-        fwrite(PRODUTOS[i].avaliacoes, sizeof(avaliacao_t), PRODUTOS[i].nAvaliacoes, arquivo); // Salva o vetor "avaliacoes"
+        if (PRODUTOS[i].nAvaliacoes > 0) { // Se há avaliações, salva elas
+            fwrite(PRODUTOS[i].avaliacoes, sizeof(avaliacao_t), PRODUTOS[i].nAvaliacoes, arquivo); // Salva o vetor "avaliacoes"
+        }
 
         fwrite(&(PRODUTOS[i].nImagens), sizeof(int), 1, arquivo); // Salva a quantidade de imagens
+        if (PRODUTOS[i].nImagens > 0) { // Se há imagens, salva elas
+            // Para cada imagem, salvar os dados de asciiImg_t*
+            for (j = 0; j < PRODUTOS[i].nImagens; j++) {
 
-        // Para cada imagem, salvar os dados de asciiImg_t*
-        for (j = 0; j < PRODUTOS[i].nImagens; j++) {
+                imagem = PRODUTOS[i].imagens[j];
 
-            imagem = PRODUTOS[i].imagens[j];
+                // Salva o número de bytes da imagem
+                fwrite(&(imagem->nBytes), sizeof(int), 1, arquivo);
 
-            // Salva o número de bytes da imagem
-            fwrite(&(imagem->nBytes), sizeof(int), 1, arquivo);
+                // Salva os bytes da imagem
+                fwrite(imagem->bytes, sizeof(uint8_t), imagem->nBytes, arquivo);
 
-            // Salva os bytes da imagem
-            fwrite(imagem->bytes, sizeof(uint8_t), imagem->nBytes, arquivo);
-
+            }
+            
         }
-        
     }
 
     // Fecha o arquivo
@@ -1304,7 +1314,11 @@ erro_t obterInformacoesArquivo(usuario_t ** USUARIOS, int * nUsuarios, produto_t
 
         usuarioAt->produtosFavoritos = (int *)malloc(sizeof(int) * usuarioAt->nFavoritos); // Aloca para os id's dos produtos favoritos
 
-        fread(usuarioAt->produtosFavoritos, sizeof(int), usuarioAt->nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"
+        if (usuarioAt->produtosFavoritos > 0) {
+            fread(usuarioAt->produtosFavoritos, sizeof(int), usuarioAt->nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"    
+        } else {
+            usuarioAt->produtosFavoritos = NULL;
+        }
 
         // Aloca para os produtos
         usuarioAt->produtos = (produto_t *)malloc(sizeof(produto_t) * usuarioAt->nProdutos);
@@ -1355,18 +1369,23 @@ erro_t obterInformacoesArquivo(usuario_t ** USUARIOS, int * nUsuarios, produto_t
     for (i = 0; i < *nProdutos; i++) {
         produtoAt = &(*PRODUTOS)[i];
 
-        // Lê a quantidade de avaliações & aloca usando essa quantidade
+        // Lê a quantidade de avaliações
         fread(&( produtoAt->nAvaliacoes ), sizeof(int), 1, arquivo); // lê a quantidade de avaliacoes
-        produtoAt->avaliacoes = (avaliacao_t *)malloc(sizeof(avaliacao_t) * produtoAt->nAvaliacoes); // Aloca para as avaliações
 
-        // Lê todas as avaliações
-        fread(produtoAt->avaliacoes, sizeof(avaliacao_t), produtoAt->nAvaliacoes, arquivo); // lê o vetor "avaliacoes"
+        // Verifica se há avaliações. Se há, procura por elas
+        if (produtoAt->nAvaliacoes > 0) {
+            // Aloca usando a quantidade de avaliações obtida
+            produtoAt->avaliacoes = (avaliacao_t *)malloc(sizeof(avaliacao_t) * produtoAt->nAvaliacoes); // Aloca para as avaliações
 
+            // Lê todas as avaliações
+            fread(produtoAt->avaliacoes, sizeof(avaliacao_t), produtoAt->nAvaliacoes, arquivo); // lê o vetor "avaliacoes"
+        }
+        
         // Lê a quantidade de imagens
         fread(&(produtoAt->nImagens), sizeof(int), 1, arquivo); // lê a quantidade de imagens
         
         // Verifica se há imagens. Se há imagens, obtem elas
-        if (produtoAt->nImagens <= 0) {
+        if (produtoAt->nImagens > 0) {
             
             // Aloca usando a quantidade de imagens no arquivo
             produtoAt->imagens = (asciiImg_t **)malloc(sizeof(asciiImg_t *) * produtoAt->nImagens); // lê para as avaliações
@@ -1400,6 +1419,7 @@ erro_t obterInformacoesArquivo(usuario_t ** USUARIOS, int * nUsuarios, produto_t
 }
 
 int main(int argc, char ** argv) {
+
     usuario_t * usuarios = NULL;
     int nUsuarios = 0;
 
@@ -1426,7 +1446,7 @@ int main(int argc, char ** argv) {
             cadastraUsuario(&usuarios, &nUsuarios);
 
             // Pergunta se vai fazer login (já que acabou de criar uma conta)
-            printf("1 - Fazer Login\t2 - Manter na mesma conta\nDeseja fazer login? ");
+            printf("\n1 - Fazer Login\t\t2 - Nao fazer login\nDeseja fazer login? ");
             scanf("%i%*c", &temp);
             if (temp == 1) { // Se for fazer login
                 loginUsuario(&loginAtual, usuarios, nUsuarios);
@@ -1459,7 +1479,7 @@ int main(int argc, char ** argv) {
             break;
 
         case 8: // Fazer uma avaliação
-            fazerAvaliacao(usuarios, nUsuarios, loginAtual);
+            fazerAvaliacao(usuarios, nUsuarios, PRODUTOS, nProdutos, loginAtual);
             break;
         
         case 9: // Lista as avaliações de um produto
