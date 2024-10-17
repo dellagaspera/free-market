@@ -43,7 +43,8 @@
 #define ARQUIVO_IMAGEM_TMP  "ascii_art.txt" // Nome do arquivo de sa�da tempor�rio da imagem
 
 // Arquivos
-//#define ARQUIVO_USUARIOS "usuarios_freemarket"
+#define NOME_ARQUIVO_USUARIOS "./usuarios_freemarket.bin"
+#define NOME_ARQUIVO_PRODUTOS "./produtos_freemarket.bin"
 
 // Saídas 
 #define SUCESSO 0
@@ -58,110 +59,113 @@
 /*  ================= Código de Imagens =================  */
 /*  =====================================================  */
 
-/// Estrutura que representa uma imagem em Ascii
-struct asciiImg_s {
-  uint8_t * bytes;
-  int nBytes;
-};
+        /// Estrutura que representa uma imagem em Ascii
+        struct asciiImg_s {
+        uint8_t * bytes;
+        int nBytes;
+        };
 
-/// Tipo "Imagem ASCII"
-typedef struct asciiImg_s asciiImg_t;
+        /// Tipo "Imagem ASCII"
+        typedef struct asciiImg_s asciiImg_t;
 
-/**
- *  \brief Função que carrega uma imagem informada na URL.
- *  
- *  \param [in] colorido Define se a imagem ser� colorida.
- *  \param [in] largura Define a largura da imagem gerada.
- *  \return Endereço da estrutura com a imagem. 
- *          Caso a imagem não tenha sido carregada corretamente, a função
- *          retornará NULL.
- */
-asciiImg_t * insta_carregaImagem(char url[], bool colorido, int largura) {
-  
-  FILE * arquivo;
-  char buffer[BUFFER_TAMANHO];
-  int nBytes, nBytesTotal = 0;
-  char linhaComando[LINHA_COMANDO];
+        /**
+         *  \brief Função que carrega uma imagem informada na URL.
+         *  
+         *  \param [in] colorido Define se a imagem ser� colorida.
+         *  \param [in] largura Define a largura da imagem gerada.
+         *  \return Endereço da estrutura com a imagem. 
+         *          Caso a imagem não tenha sido carregada corretamente, a função
+         *          retornará NULL.
+         */
+        asciiImg_t * insta_carregaImagem(char url[], bool colorido, int largura) {
+        
+        FILE * arquivo;
+        char buffer[BUFFER_TAMANHO];
+        int nBytes, nBytesTotal = 0;
+        char linhaComando[LINHA_COMANDO];
 
-  asciiImg_t * img;
-  
-  // Aloca espaço para uma imagem
-  img = malloc(sizeof(asciiImg_t));
-  if (img == NULL) return NULL;
-  
-  // Inicializa a estrutura
-  img->bytes = NULL;
-  img->nBytes = 0;
-  
-  // Monta a linha de comando
-  (void)sprintf(linhaComando, "%s %s %s -W %d -c > %s", FERRAMENTA_IMAGEM, url, (colorido ? "-C" : ""), largura, ARQUIVO_IMAGEM_TMP);
-  
-  // Chama o programa para fazer o download da imagem
-  (void)system(linhaComando);
+        asciiImg_t * img;
+        
+        // Aloca espaço para uma imagem
+        img = malloc(sizeof(asciiImg_t));
+        if (img == NULL) return NULL;
+        
+        // Inicializa a estrutura
+        img->bytes = NULL;
+        img->nBytes = 0;
+        
+        // Monta a linha de comando
+        (void)sprintf(linhaComando, "%s %s %s -W %d -c > %s", FERRAMENTA_IMAGEM, url, (colorido ? "-C" : ""), largura, ARQUIVO_IMAGEM_TMP);
+        
+        // Chama o programa para fazer o download da imagem
+        (void)system(linhaComando);
 
-  // Tenta abrir o arquivo recem criado
-  arquivo = fopen(ARQUIVO_IMAGEM_TMP, "r");
-  if (arquivo != NULL) {
-    
-    while(!feof(arquivo)) {
-      
-      // Limpa a linha
-      (void)memset(buffer, 0, sizeof(buffer));
-      
-      // Tenta ler uma linha
-      if (fgets(buffer, BUFFER_TAMANHO, arquivo) == NULL) continue;
-      
-      // Descobre o n�mero de bytes da linha
-      for(nBytes = 0; buffer[nBytes] != 0; nBytes++);
-      
-      // Aloca o espa�o
-      img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + nBytes));
-      
-      // Copia para o espa�o alocado
-      (void)memcpy(&(img->bytes[nBytesTotal]), buffer, nBytes);
-      nBytesTotal+=nBytes;
-    }
+        // Tenta abrir o arquivo recem criado
+        arquivo = fopen(ARQUIVO_IMAGEM_TMP, "r");
+        if (arquivo != NULL) {
+            
+            while(!feof(arquivo)) {
+            
+            // Limpa a linha
+            (void)memset(buffer, 0, sizeof(buffer));
+            
+            // Tenta ler uma linha
+            if (fgets(buffer, BUFFER_TAMANHO, arquivo) == NULL) continue;
+            
+            // Descobre o n�mero de bytes da linha
+            for(nBytes = 0; buffer[nBytes] != 0; nBytes++);
+            
+            // Aloca o espa�o
+            img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + nBytes));
+            
+            // Copia para o espa�o alocado
+            (void)memcpy(&(img->bytes[nBytesTotal]), buffer, nBytes);
+            nBytesTotal+=nBytes;
+            }
 
-    // Finaliza a imagem colocando o \0 final e o tamanho
-    img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + 1));
-    img->bytes[nBytesTotal++] = '\0';
-    img->nBytes = nBytesTotal;
-    
-    // Fecha o arquivo
-    fclose(arquivo);
-  }
-  
-  // Verifica se a imagem é válida
-  if (img->nBytes < LIMIAR_INFERIOR_TAMANHO_IMAGEM) {
-    // Libera todo o espaço alocado
-    free(img->bytes);
-    free(img);
-    
-    return NULL;
-  }
-  
-  // Retorna a imagem carregada
-  return img;
-}
+            // Finaliza a imagem colocando o \0 final e o tamanho
+            img->bytes = realloc(img->bytes, sizeof(unsigned char) * (nBytesTotal + 1));
+            img->bytes[nBytesTotal++] = '\0';
+            img->nBytes = nBytesTotal;
+            
+            // Fecha o arquivo
+            fclose(arquivo);
+        }
+        
+        // Verifica se a imagem é válida
+        if (img->nBytes < LIMIAR_INFERIOR_TAMANHO_IMAGEM) {
+            // Libera todo o espaço alocado
+            free(img->bytes);
+            free(img);
+            
+            return NULL;
+        }
+        
+        // Retorna a imagem carregada
+        return img;
+        }
 
-/**
- *  \brief Fun��o que imprime uma Imagem ASCII.
- *  
- *  \param [in] img Endere�o da estrutura com os dados da imagem.
- */
-void insta_imprimeImagem(asciiImg_t * img) {
-  printf("%s", img->bytes);
-}
+        /**
+         *  \brief Fun��o que imprime uma Imagem ASCII.
+         *  
+         *  \param [in] img Endere�o da estrutura com os dados da imagem.
+         */
+        void insta_imprimeImagem(asciiImg_t * img) {
+        printf("%s", img->bytes);
+        }
 
-/**
- *  \brief Fun��o que libera a mem�ria alocada por uma imagem.
- *  
- *  \param [in] img Endere�o da estrutura com os dados da imagem a ser liberada.
- */
-void insta_liberaImagem(asciiImg_t * img) {
+        /**
+         *  \brief Fun��o que libera a mem�ria alocada por uma imagem.
+         *  
+         *  \param [in] img Endere�o da estrutura com os dados da imagem a ser liberada.
+         */
+        void insta_liberaImagem(asciiImg_t * img) {
   free(img->bytes);
   free(img);
 }
+
+
+
 
 /*  =========================================================  */
 /*  ================= Código do Free Market =================  */
@@ -180,9 +184,8 @@ typedef struct avaliacao_s {
 
 } avaliacao_t;
 
-
 // Estrutura do produto
-typedef struct produto_s { //obs: a chave é do lado do nome! nao é! é sim!
+typedef struct produto_s {
 
     // Informações básicas do produto
     char nomeProduto[MAX_CHAR_NOME_PRODUTO];
@@ -248,7 +251,7 @@ int escolherProdutoComId(usuario_t usuario)
     //Faz um loop e imprime todos os usuarios pra voce selecionar
     //Faz um loop por todos dnv e vc digita um nome(dps muda pra ID) e retorna o indice dele
 
-    printf("Produtos: \n\n");
+    printf("Produtos para escolher: \n\n");
     // Loop em todos os produtos do usuário e printa o id e o nome do produto
     for(i = 0; i < usuario.nProdutos; i++) {
 
@@ -330,7 +333,7 @@ int buscaUsuario(usuario_t *usuario, int nUsuarios, bool esperar_enter) {
     // Exibe todos os usuários
     printf("%-31s | %-30s\n", "ID", "Nome");
     for (i = 0; i < nUsuarios; i++) {
-        printf("%-31s   %s\n", usuario[i].nome, usuario[i].ID);
+        printf("%-31s   %s\n", usuario[i].ID, usuario[i].nome);
     }
 
     printf("Digite o ID do usuario: ");
@@ -347,7 +350,7 @@ int buscaUsuario(usuario_t *usuario, int nUsuarios, bool esperar_enter) {
             // Printa as informações sobre o usuário
             printf("Nome do usuario: %s\n", usuarioPesquisado.nome);
             printf("Id do usuario: %s\n", usuarioPesquisado.ID);
-            printf("Quantidade de produtos cadastrados: %d\nProdutos:\n", usuarioPesquisado.nProdutos);
+            printf("Quantidade de produtos cadastrados: %d\nProdutos do Usuario:\n", usuarioPesquisado.nProdutos);
 
             // Exibe informações sobre cada produto
             for (j = 0; j < usuarioPesquisado.nProdutos; j++) {
@@ -394,7 +397,7 @@ void listarProdutos(usuario_t *usuario, int nUsuarios) {
     }
 
     // Lista os produtos do usuário
-    printf("%-2s | %-30s\n", "ID", "Nome");
+    printf("\n\nResumo:\n%-2s | %-30s\n", "ID", "Nome");
     for (int i = 0; i < usuario[indiceUsuario].nProdutos; i++) {
         printf("%02d   %s\n", i, usuario[indiceUsuario].produtos[i].nomeProduto);
     }
@@ -403,12 +406,13 @@ void listarProdutos(usuario_t *usuario, int nUsuarios) {
 }
 
 // Compra um produto de um usuário
-void compraProduto(usuario_t *usuario, int nUsuarios) {
+void compraProduto(usuario_t *usuario, int nUsuarios, produto_t * PRODUTOS, int nProdutos) {
 
     int indiceUsuario = buscaUsuario(usuario, nUsuarios, false);
     int indiceProduto = escolherProdutoComId(*usuario);
 
     int nUnidades;
+    int i;
 
     if (indiceUsuario == ERRO_BUSCAR_SEM_CORRESPONDENTE && usuario[indiceUsuario].nProdutos <= 0) {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
@@ -428,6 +432,15 @@ void compraProduto(usuario_t *usuario, int nUsuarios) {
 
         if (nUnidades <= usuario[indiceUsuario].produtos[indiceProduto].estoque) {
             usuario[indiceUsuario].produtos[indiceProduto].estoque -= nUnidades;
+
+            // Seta a mudança no vetor "PRODUTOS" totais também
+            for (i = 0; i < nProdutos; i++) {
+                if (PRODUTOS[i].Id == usuario[indiceUsuario].produtos[indiceProduto].Id) {   // Se os ID's forem iguais
+                    PRODUTOS[i] = usuario[indiceUsuario].produtos[indiceProduto];            // O "produto" do vetor total agora é o mesmo do usuário
+                    break;
+                }
+            }
+
             printf("PRODUTO COMPRADO COM SUCESSO\n");
             return;
         } else {
@@ -444,20 +457,35 @@ void compraProduto(usuario_t *usuario, int nUsuarios) {
 }
 
 // Apaga um produto do usuário
-void apagarProduto(usuario_t * usuario) {
+void apagarProduto(usuario_t * usuario, produto_t ** PRODUTOS, int * nProdutos) {
     int indiceProduto = escolherProdutoComId(* usuario);
+    int i;
     if(indiceProduto == ERRO_BUSCAR_SEM_CORRESPONDENTE)
     {
         printf("NAO HA PRODUTOS CADASTRADOS\n");
         return;
     }
 
-    for (int i = indiceProduto; i < (* usuario).nProdutos - 1; i++) {
+    for (i = indiceProduto; i < (* usuario).nProdutos - 1; i++) {
         usuario->produtos[i] = usuario->produtos[i + 1];        
     }
 
+    // Seta a mudança no vetor "PRODUTOS" totais também
+    for (i = 0; i < (*nProdutos); i++) {
+        if ((*PRODUTOS)[i].Id == (*PRODUTOS)[indiceProduto].Id) {   // Se os ID's forem iguais
+            indiceProduto = i;
+            break;
+        }
+    }
+
+    for (i = indiceProduto; i < (*nProdutos) - 1; i++) {
+        (*PRODUTOS)[i] = usuario->produtos[i + 1];        
+    }
+
     (usuario->nProdutos)--;
+    (*nProdutos)--;
     usuario->produtos = (produto_t *)realloc(usuario->produtos, sizeof(produto_t) * (usuario->nProdutos));
+    *PRODUTOS = (produto_t *)realloc(*PRODUTOS, sizeof(produto_t) * (*nProdutos));
 
     printf("O PRODUTO FOI REMOVIDO COM SUCESSO\n");
 }
@@ -742,7 +770,7 @@ void liberaImagensProduto(produto_t * produto) {
 }
 
 // Edita um produto do usuário escolhido
-void editarProduto(usuario_t *usuario) {
+void editarProduto(usuario_t *usuario, produto_t * PRODUTOS, int nProdutos) {
     
     // indice do produto selecionado pelo usuário
     int indiceProduto = escolherProdutoComId(* usuario);
@@ -760,7 +788,8 @@ void editarProduto(usuario_t *usuario) {
     char temp_sinal;
     char tempLink[MAX_LINK];
 
-    produto_t * _produto = &usuario->produtos[indiceProduto];
+    produto_t * _produto = &usuario->produtos[indiceProduto]; // produto no usuário
+    
     // endereço do produto
 
     do {
@@ -886,6 +915,14 @@ void editarProduto(usuario_t *usuario) {
                 break;
         }
     } while (escolha != 0);
+
+    // Seta a mudança no vetor "PRODUTOS" totais também
+    for (i = 0; i < nProdutos; i++) {
+        if (PRODUTOS[i].Id == _produto->Id) {   // Se os ID's forem iguais
+            PRODUTOS[i] = *_produto;            // O "produto" do vetor total agora é o mesmo do usuário
+            break;
+        }
+    }
 }
 
 //Função para fazer avaliação de um produto
@@ -1142,16 +1179,239 @@ erro_t desfavoritarProduto(usuario_t *usuarios, int nUsuarios, int idUsuarioAtua
     }
 }
 
-int main(int argc, char ** argv)
-{
+/*      Arquivos      */
+
+#define ERRO_ABRIR_ARQUIVO 1 // Caso não dê para abrir o arquivo
+#define ERRO_LER_INFORMACAO 2 // Caso não dê para abrir o arquivo
+// Salva o vetor "Usuarios" e o vetor "Produtos" em seus respectivos arquivos
+erro_t salvarInformacoesArquivo(usuario_t * USUARIOS, int nUsuarios, produto_t * PRODUTOS, int nProdutos) {
+
+    FILE * arquivo;
+    int i, j;
+    asciiImg_t * imagem;
+
+    /* Salvar os usuários */
+
+    // Abre o arquivo & verifica se abriu com sucesso
+    arquivo = fopen(NOME_ARQUIVO_USUARIOS, "wb");
+    if (!arquivo) {
+        perror("Nao foi possivel abrir o arquivo de usuarios");
+        return ERRO_ABRIR_ARQUIVO;
+    }
+
+    // Salva a quantidade de usuários
+    fwrite(&nUsuarios, sizeof(int), 1, arquivo);
+
+    // Salva o vetor de USUÁRIOS
+    fwrite(USUARIOS, sizeof(usuario_t), nUsuarios, arquivo);
+
+    // Faz um loop por todos os usuários, salvando seus favoritos
+    for (i = 0; i < nUsuarios; i++) {
+        fwrite(&(USUARIOS[i].nFavoritos), sizeof(int), 1, arquivo); // Salva a quantidade de favoritos
+        fwrite(USUARIOS[i].produtosFavoritos, sizeof(int), USUARIOS[i].nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"
+    }
+
+    // Fecha o arquivo
+    fclose(arquivo);
+
+    /* Salvar os Produtos */
+
+    arquivo = fopen(NOME_ARQUIVO_PRODUTOS, "wb");
+    if (!arquivo) {
+        perror("Nao foi possivel abrir o arquivo de produtos");
+        return ERRO_ABRIR_ARQUIVO;
+    }
+
+    // Salva a quantidade de produtos
+    fwrite(&nProdutos, sizeof(int), 1, arquivo);
+
+    // Salva o vetor de PRODUTOS
+    fwrite(PRODUTOS, sizeof(produto_t), nProdutos, arquivo);
+
+    // Faz um loop por todos os produtos, salvando suas avaliações & imagens
+    for (i = 0; i < nProdutos; i++) {
+        fwrite(&(PRODUTOS[i].nAvaliacoes), sizeof(int), 1, arquivo); // Salva a quantidade de avaliacoes
+        fwrite(PRODUTOS[i].avaliacoes, sizeof(avaliacao_t), PRODUTOS[i].nAvaliacoes, arquivo); // Salva o vetor "avaliacoes"
+
+        fwrite(&(PRODUTOS[i].nImagens), sizeof(int), 1, arquivo); // Salva a quantidade de imagens
+
+        // Para cada imagem, salvar os dados de asciiImg_t*
+        for (j = 0; j < PRODUTOS[i].nImagens; j++) {
+
+            imagem = PRODUTOS[i].imagens[j];
+
+            // Salva o número de bytes da imagem
+            fwrite(&(imagem->nBytes), sizeof(int), 1, arquivo);
+
+            // Salva os bytes da imagem
+            fwrite(imagem->bytes, sizeof(uint8_t), imagem->nBytes, arquivo);
+
+        }
+        
+    }
+
+    // Fecha o arquivo
+    fclose(arquivo);
+}
+
+erro_t obterInformacoesArquivo(usuario_t ** USUARIOS, int * nUsuarios, produto_t ** PRODUTOS, int * nProdutos) {
+
+    FILE * arquivo;
+    int i, j, idDono;
+    produto_t * produtoAt; // produtoAtual
+    usuario_t * usuarioAt; // usuarioAtual
+
+    /* Obter os usuários */
+
+    // Abre o arquivo & verifica se abriu com sucesso
+    arquivo = fopen(NOME_ARQUIVO_USUARIOS, "rb");
+    if (!arquivo) {
+        perror("Nao foi possivel abrir o arquivo de usuarios");
+        return ERRO_ABRIR_ARQUIVO;
+    }
+
+    // Lê a quantidade de usuários
+    if (fread(nUsuarios, sizeof(int), 1, arquivo) <= 0) {
+        // Não conseguiu ler a quantidade de usuários. (Provavelmente, o arquivo está vazio)
+        perror("Nao foi possivel ler informacoes no arquivo");
+
+        *nUsuarios = 0;
+
+        return ERRO_LER_INFORMACAO;
+    }
+
+    // Aloca para guardar os usuários salvos
+    *USUARIOS = (usuario_t *)malloc(sizeof(usuario_t) * (*nUsuarios));
+
+    // Lê o vetor de USUÁRIOS
+    if (fread(*USUARIOS, sizeof(usuario_t), *nUsuarios, arquivo) <= 0) {
+        // Não conseguiu ler a quantidade de usuários
+        perror("Nao foi possivel ler informacoes no arquivo");
+        
+        free(*USUARIOS); // Libera a memória armazenada :D
+
+        *nUsuarios = 0;
+        *USUARIOS = NULL;
+
+        return ERRO_LER_INFORMACAO;
+    }
+
+    // Faz um loop por todos os usuários, salvando seus favoritos. Além disso, aloca para seus produtos
+    for (i = 0; i < *nUsuarios; i++) {
+        usuarioAt = &(*USUARIOS)[i]; // Seta o usuário atual como USUARIOS[i]
+
+        fread(&(usuarioAt->nFavoritos), sizeof(int), 1, arquivo); // Lê a quantidade de favoritos
+
+        usuarioAt->produtosFavoritos = (int *)malloc(sizeof(int) * usuarioAt->nFavoritos); // Aloca para os id's dos produtos favoritos
+
+        fread(usuarioAt->produtosFavoritos, sizeof(int), usuarioAt->nFavoritos, arquivo); // Salva o vetor "produtosFavoritos"
+
+        // Aloca para os produtos
+        usuarioAt->produtos = (produto_t *)malloc(sizeof(produto_t) * usuarioAt->nProdutos);
+        usuarioAt->nProdutos = 0; 
+        // Seta 0 o nProdutos para, quando for colocar os produtos no vetor de produtos,
+        // já ter uma variável cuidando do tamanho. Note que essa variável voltará ao
+        // valor certo(o valor antes de ser 0) durante a "colocação" dos produtos.
+    }
+
+    // Fecha o arquivo
+    fclose(arquivo);
+
+    /* Lê os Produtos */
+
+    arquivo = fopen(NOME_ARQUIVO_PRODUTOS, "rb");
+    if (!arquivo) {
+        perror("Nao foi possivel abrir o arquivo de produtos");
+        return ERRO_ABRIR_ARQUIVO;
+    }
+
+    // Lê a quantidade de produtos
+    if (fread(nProdutos, sizeof(int), 1, arquivo) <= 0 ) {
+        // Não foi possível ler a quantidade de produtos. (Provavelmente, o arquivo está vazio)
+        perror("Nao foi possivel ler informacoes no arquivo");
+
+        *nProdutos = 0;
+
+        return ERRO_LER_INFORMACAO;
+    }
+
+    // Aloca para produtos
+    *PRODUTOS = (produto_t *) malloc(sizeof(produto_t) * (*nProdutos));
+
+    // Lê o vetor de PRODUTOS
+    if (fread(*PRODUTOS, sizeof(produto_t), *nProdutos, arquivo) <= 0) {
+        // Não conseguiu ler os produtos
+        perror("Nao foi possivel ler informacoes no arquivo");
+        
+        free(*PRODUTOS); // Libera a memória armazenada :D
+
+        *nProdutos = 0;
+        *PRODUTOS = NULL;
+
+        return ERRO_LER_INFORMACAO;
+    }
+
+    // Faz um loop por todos os produtos, lendo suas avaliações & imagens. Além disso, coloca-se no vetor do seu respectivo vendedor
+    for (i = 0; i < *nProdutos; i++) {
+        produtoAt = &(*PRODUTOS)[i];
+
+        // Lê a quantidade de avaliações & aloca usando essa quantidade
+        fread(&( produtoAt->nAvaliacoes ), sizeof(int), 1, arquivo); // lê a quantidade de avaliacoes
+        produtoAt->avaliacoes = (avaliacao_t *)malloc(sizeof(avaliacao_t) * produtoAt->nAvaliacoes); // Aloca para as avaliações
+
+        // Lê todas as avaliações
+        fread(produtoAt->avaliacoes, sizeof(avaliacao_t), produtoAt->nAvaliacoes, arquivo); // lê o vetor "avaliacoes"
+
+        // Lê a quantidade de imagens
+        fread(&(produtoAt->nImagens), sizeof(int), 1, arquivo); // lê a quantidade de imagens
+        
+        // Verifica se há imagens. Se há imagens, obtem elas
+        if (produtoAt->nImagens <= 0) {
+            
+            // Aloca usando a quantidade de imagens no arquivo
+            produtoAt->imagens = (asciiImg_t **)malloc(sizeof(asciiImg_t *) * produtoAt->nImagens); // lê para as avaliações
+
+            // Loop em todas as imagens no arquivo
+            for (j = 0; j < produtoAt->nImagens; j++) {
+                // Aloca para a imagem atual
+                produtoAt->imagens[j] = (asciiImg_t *)malloc(sizeof(asciiImg_t));
+
+                // Lê o tamanho
+                fread(&(produtoAt->imagens[j]->nBytes), sizeof(int), 1, arquivo);
+            
+                // Aloca pro tamanho
+                produtoAt->imagens[j]->bytes = (uint8_t *)malloc(sizeof(uint8_t) * produtoAt->imagens[j]->nBytes);
+
+                // Lê os bytes e coloca no vetor de bytes
+                fread(produtoAt->imagens[j]->bytes, sizeof(uint8_t), produtoAt->imagens[j]->nBytes, arquivo); // lê o vetor "imagens[j]"
+            }
+
+        }
+        
+        // Coloca o produto no vetor do seu vendedor
+        idDono = buscarUsuarioPorId(*USUARIOS, *nUsuarios, produtoAt->idDono);
+        (*USUARIOS)[idDono].produtos[(*USUARIOS)[idDono].nProdutos] = (*PRODUTOS)[i];
+
+        (*USUARIOS)[idDono].nProdutos++;
+    }
+
+    // Fecha o arquivo
+    fclose(arquivo);
+}
+
+int main(int argc, char ** argv) {
     usuario_t * usuarios = NULL;
     int nUsuarios = 0;
 
     produto_t * PRODUTOS = NULL;
     int nProdutos = 0;
     
+    // Lê o que já está escrito nos arquivos e traz pro código
+    obterInformacoesArquivo(&usuarios, &nUsuarios, &PRODUTOS, &nProdutos); 
+    
     int loginAtual = USUARIO_SEM_LOGIN; // Sempre incia sem login
     int escolha = -1;
+    int temp;
     
     do{
 
@@ -1164,6 +1424,14 @@ int main(int argc, char ** argv)
 
         case 1: // Cadastro
             cadastraUsuario(&usuarios, &nUsuarios);
+
+            // Pergunta se vai fazer login (já que acabou de criar uma conta)
+            printf("1 - Fazer Login\t2 - Manter na mesma conta\nDeseja fazer login? ");
+            scanf("%i%*c", &temp);
+            if (temp == 1) { // Se for fazer login
+                loginUsuario(&loginAtual, usuarios, nUsuarios);
+            }
+
             break;
 
         case 2: // Login
@@ -1179,15 +1447,15 @@ int main(int argc, char ** argv)
             break;
 
         case 5: // Editar um produto
-            editarProduto(&usuarios[loginAtual]);
+            editarProduto(&usuarios[loginAtual], PRODUTOS, nProdutos);
             break;
 
         case 6: // Apagar um produto
-            apagarProduto(&usuarios[loginAtual]);
+            apagarProduto(&usuarios[loginAtual], &PRODUTOS, &nProdutos);
             break;
 
         case 7: // Comprar um produto
-            compraProduto(usuarios, nUsuarios);
+            compraProduto(usuarios, nUsuarios, PRODUTOS, nProdutos);
             break;
 
         case 8: // Fazer uma avaliação
@@ -1219,13 +1487,13 @@ int main(int argc, char ** argv)
             break;
             
         case 0: // Encerra o programa
-            return SUCESSO;
             break;
         }
         
     }while(escolha != 0); 
-    // O loop nunca chegará nessa parte sem ser parado.
-    // Entretanto, para facilitar a leitura, a condição foi colocada.
+    
+    // Salva as informações no arquivo
+    salvarInformacoesArquivo(usuarios, nUsuarios, PRODUTOS, nProdutos);
 
     return SUCESSO;
 }
